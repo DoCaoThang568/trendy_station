@@ -21,7 +21,9 @@
             <span style="font-size: 2rem;">👑</span>
             The Trendy Station
         </div>
-        <nav class="nav-menu">
+        <nav class="nav-menu">            <div class="nav-item <?php echo (isset($current_page) && $current_page == 'dashboard') ? 'active' : ''; ?>" onclick="location.href='index.php?page=dashboard'">
+                🏠 Tổng quan
+            </div>
             <div class="nav-item <?php echo (isset($current_page) && $current_page == 'products') ? 'active' : ''; ?>" onclick="location.href='index.php?page=products'">
                 📦 Sản phẩm
             </div>
@@ -44,7 +46,5 @@
                 🚪 Thoát
             </div>
         </nav>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content"><?php echo (isset($current_page) && $current_page == 'sales') ? 'active' : ''; ?>
+    </div>    <!-- Main Content -->
+    <div class="main-content">

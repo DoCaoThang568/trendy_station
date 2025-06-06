@@ -11,7 +11,7 @@ session_start();
 require_once 'config/database.php';
 
 // Get current page
-$page = $_GET['page'] ?? 'products';
+$page = $_GET['page'] ?? 'dashboard';
 $action = $_GET['action'] ?? '';
 
 // Handle logout
@@ -26,6 +26,7 @@ $current_page = $page;
 
 // Set page title
 $page_titles = [
+    'dashboard' => '🏠 Tổng quan',
     'products' => '📦 Quản lý Sản phẩm',
     'sales' => '💰 Bán hàng',
     'imports' => '📥 Nhập hàng',
@@ -41,6 +42,9 @@ include 'includes/header.php';
 
 // Route to appropriate page
 switch ($page) {
+    case 'dashboard':
+        include 'pages/dashboard.php';
+        break;
     case 'products':
         include 'pages/products.php';
         break;
