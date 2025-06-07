@@ -372,11 +372,6 @@ top
 htop
 ```
 
-### 📞 SUPPORT CONTACTS
-- **Developer:** [Your Name] - [Your Email]
-- **Server Admin:** [Admin Name] - [Admin Email]
-- **Hosting Provider:** [Provider Support]
-
 ### 📝 MAINTENANCE SCHEDULE
 - **Daily:** Automated backups
 - **Weekly:** Security updates check

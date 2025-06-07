@@ -174,7 +174,7 @@
 
 ## 📝 CHÚ THÍCH PHIÊN BẢN:
 
-**Version 2.0** - Ngày: [Date]
+**Version 2.0** 
 - ✅ Hoàn thiện CRUD tất cả modules
 - ✅ Thêm trang Trả hàng với full workflow
 - ✅ Báo cáo nâng cao với export CSV
@@ -184,6 +184,3 @@
 - ✅ Keyboard shortcuts toàn bộ
 - ✅ Auto-save & draft recovery
 - ✅ Advanced search & filtering
-
-**Developed by**: Student Project - PHP + MySQL
-**System**: The Trendy Station Management System

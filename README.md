@@ -10,7 +10,7 @@
 
 ## 🎯 **GIỚI THIỆU**
 
-**The Trendy Station** là hệ thống quản lý shop thời trang được phát triển bằng **PHP + MySQL**, tối ưu cho đồ án sinh viên với giao diện hiện đại, tính năng đầy đủ và trải nghiệm người dùng tuyệt vời.
+**The Trendy Station** là hệ thống quản lý shop thời trang được phát triển bằng **PHP + MySQL**, với giao diện hiện đại, tính năng đầy đủ và trải nghiệm người dùng tuyệt vời.
 
 ### ✨ **Tính năng nổi bật:**
 - 🚀 **Phím tắt thông minh** (F1, F2, F3, Ctrl+Enter...)
@@ -215,37 +215,3 @@ trendy_station/
 ## 📄 **LICENSE**
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
----
-
-## 👨‍💻 **TEAM**
-
-**Developed by:** [Tên sinh viên]  
-**Class:** [Tên lớp]  
-**Instructor:** [Tên giảng viên]  
-**Year:** 2024  
-
-**Contact:** [email@example.com]  
-**LinkedIn:** [Your LinkedIn]  
-**GitHub:** [Your GitHub]  
-
----
-
-## ⭐ **NẾU BẠN THÍCH DỰ ÁN NÀY**
-
-- ⭐ **Star** repo này
-- 🍴 **Fork** để phát triển thêm
-- 📢 **Share** với bạn bè
-- 💬 **Feedback** qua Issues
-
----
-
-<div align="center">
-  <h3>🚀 Happy Coding! 👩‍💻👨‍💻</h3>
-  
-  **Made with ❤️ for education purposes**
-  
-  ![Visitors](https://visitor-badge.laobi.icu/badge?page_id=trendy-station)
-  ![Last Commit](https://img.shields.io/github/last-commit/yourusername/trendy-station)
-  ![Repo Size](https://img.shields.io/github/repo-size/yourusername/trendy-station)
-</div>

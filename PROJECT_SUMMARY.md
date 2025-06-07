@@ -3,7 +3,7 @@
 
 ### � **TỔNG QUAN DỰ ÁN**
 
-**Trendy Station** là một hệ thống quản lý shop thời trang được phát triển hoàn chỉnh bằng **PHP + MySQL**, được thiết kế đặc biệt cho đồ án sinh viên với các tính năng hiện đại và trải nghiệm người dùng tốt nhất.
+**Trendy Station** là một hệ thống quản lý shop thời trang được phát triển hoàn chỉnh bằng **PHP + MySQL**, được thiết kế với các tính năng hiện đại và trải nghiệm người dùng tốt nhất.
 
 ---
 
@@ -246,23 +246,3 @@ trendy_station/
 - ✅ **Code Organization** - Tổ chức code hiệu quả
 - ✅ **Testing & Debugging** - Test và debug
 - ✅ **Documentation** - Viết tài liệu kỹ thuật
-
----
-
-## 📞 LIÊN HỆ & HỖ TRỢ
-
-**Sinh viên thực hiện:** [Tên sinh viên]  
-**Lớp:** [Tên lớp]  
-**Giảng viên hướng dẫn:** [Tên giảng viên]  
-**Năm học:** 2024  
-
-**Repository:** [GitHub URL]  
-**Demo:** [Live demo URL]  
-**Documentation:** Xem các file .md trong project  
-
----
-
-*Dự án được phát triển với mục đích học tập và nghiên cứu. 
-Mọi góp ý và đề xuất xin gửi về email hoặc GitHub Issues.*
-
-**Happy Coding! 🚀👩‍💻👨‍💻**
