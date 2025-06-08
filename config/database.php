@@ -39,7 +39,7 @@ function executeQuery($sql, $params = []) {
         $stmt->execute($params);
         return $stmt;
     } catch (PDOException $e) {
-        die("❌ Lỗi thực hiện query: " . $e->getMessage());
+        throw new Exception("Database query error: " . $e->getMessage());
     }
 }
 
@@ -86,7 +86,7 @@ if (isset($_GET['test_db'])) {
         $result = fetchOne("SELECT 'Kết nối thành công!' as message, NOW() as current_time");
         echo "✅ " . $result['message'] . " - " . $result['current_time'];
     } catch (Exception $e) {
-        echo "❌ Lỗi test: " . $e->getMessage();
+        echo "Database test error: " . $e->getMessage();
     }
     exit;
 }

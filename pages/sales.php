@@ -297,7 +297,6 @@ const products = <?php echo json_encode($products); ?>;
 let allProducts = [...products]; // Backup for search
 let itemCount = 0;
 let cartItems = [];
-let isSaleDetailModalOpen = false; // Flag for sales detail modal
 
 // Format currency helper
 function formatCurrency(amount) {
@@ -607,125 +606,169 @@ function resetForm() {
 
 // View sale detail
 function viewSaleDetail(saleCode, saleId) {
-    if (isSaleDetailModalOpen) {
-        console.log('Sale detail modal is already open or opening. Request ignored.');
-        return;
-    }
-    isSaleDetailModalOpen = true;
-
-    showToast('Đang tải thông tin hóa đơn...', 'info');
-
-    const modalOverlayId = 'saleDetailModalOverlay_' + Date.now(); // Unique ID for the modal
-    const modal = document.createElement('div');
-    modal.id = modalOverlayId;
-    modal.className = 'modal-overlay'; // This class should have CSS for overlay display
-
-    const saleDetailContentId = `saleDetailContent_${modalOverlayId}`;
-
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header">
-                <h3>📋 Chi tiết hóa đơn ${saleCode}</h3>
-                <button class="btn btn-small btn-danger" onclick="closeModal('${modalOverlayId}')">✕</button>
-            </div>
-            <div class="modal-body" id="${saleDetailContentId}">
-                <div style="text-align: center; padding: 2rem;">
-                    <div class="loading-spinner"></div>
-                    <p>Đang tải...</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('${modalOverlayId}')">Đóng</button>
-                <button class="btn btn-primary" onclick="printInvoice(${saleId}, '${saleCode}')">🖨️ In hóa đơn</button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-    // Ensure modal is displayed, assuming CSS for .modal-overlay handles this
-    // If .modal-overlay uses display: none by default, you might need:
-    modal.style.display = 'flex'; // Or 'block', depending on your CSS for centering/display
-
-    const saleDetailContentEl = document.getElementById(saleDetailContentId);
-
-    fetch('ajax/get_sale_detail.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ sale_id: saleId })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success && saleDetailContentEl) {
-            saleDetailContentEl.innerHTML = data.html;
-        } else if (saleDetailContentEl) {
-            saleDetailContentEl.innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: var(--danger-color);">
-                    ❌ Không thể tải thông tin hóa đơn: ${data.error || 'Lỗi không xác định.'}
-                </div>
-            `;
-        }
-    })
-    .catch(error => {
-        console.error('Error fetching sale detail:', error);
-        if (saleDetailContentEl) {
-            saleDetailContentEl.innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: var(--danger-color);">
-                    ❌ Lỗi kết nối hoặc xử lý: ${error.message}
-                </div>
-            `;
-        }
-    });
-    // Note: isSaleDetailModalOpen is reset in closeModal
+    console.log(`[viewSaleDetail] Called for saleId: ${saleId}`);
+    showToast('Đang tải chi tiết hóa đơn...', 'info');
+    fetch(`ajax/get_sale_detail.php?id=${saleId}`)
+        .then(response => {
+            console.log('[viewSaleDetail] Fetch response received:', response);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error('[viewSaleDetail] HTTP error response text:', text);
+                    throw new Error(`Lỗi HTTP ${response.status}: ${text || 'Không có thông tin lỗi chi tiết'}`);
+                });
+            }
+            return response.text(); 
+        })
+        .then(text => {
+            console.log('[viewSaleDetail] Response text received:', text);
+            try {
+                const data = JSON.parse(text);
+                console.log('[viewSaleDetail] Parsed JSON data:', data);
+                if (data.error) {
+                    showToast(`Lỗi tải chi tiết: ${data.error}`, 'error');
+                    console.error('[viewSaleDetail] Server error in JSON:', data.error);
+                    return;
+                }
+                // Check if sale and details data are present
+                if (data.sale && data.details) {
+                    console.log('[viewSaleDetail] Data is valid, calling showSaleDetailModal.');
+                    showSaleDetailModal(data.sale, data.details);
+                } else {
+                    console.error('[viewSaleDetail] Invalid data structure received:', data);
+                    showToast('Lỗi: Dữ liệu chi tiết hóa đơn không đầy đủ.', 'error');
+                }
+            } catch (e) {
+                console.error('[viewSaleDetail] Lỗi phân tích JSON:', e);
+                console.error('[viewSaleDetail] Dữ liệu nhận được không phải JSON:', text);
+                showToast('Lỗi: Dữ liệu trả về không hợp lệ. Vui lòng kiểm tra console (F12).', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('[viewSaleDetail] Lỗi khi tải chi tiết hóa đơn:', error);
+            showToast(`Lỗi: ${error.message}`, 'error');
+        });
 }
 
 // Print invoice
 function printInvoice(saleId) {
-    // Ensure isSaleDetailModalOpen is false before opening a new window
-    // This prevents issues if a sale detail modal was open and not properly closed
-    if (isSaleDetailModalOpen) {
-        console.warn("Attempting to print invoice while sale detail modal might be open. Ensure modals are closed.");
-        // Optionally, try to close any open modal, though this might be aggressive
-        // const existingModal = document.getElementById('saleDetailModal');
-        // if (existingModal) {
-        //     existingModal.remove();
-        //     const overlay = document.getElementById('modalOverlay');
-        //     if (overlay) overlay.remove();
-        // }
-        // isSaleDetailModalOpen = false; // Reset flag
-    }
     window.open(`print_invoice.php?id=${saleId}`, '_blank', 'width=800,height=600');
 }
 
-// Close modal (local to sales.php, specifically for sales detail modal)
-function closeModal(modalId) { // Expects modalId
-    const modalOverlay = document.getElementById(modalId);
+// Show sale detail modal
+function showSaleDetailModal(saleData, details) {
+    console.log('[showSaleDetailModal] Called with saleData:', saleData, 'and details:', details);
+    
+    const existingModal = document.querySelector('.modal-overlay.sale-detail-modal');
+    if (existingModal) {
+        console.log('[showSaleDetailModal] Removing existing sale detail modal.');
+        existingModal.remove();
+    }
 
-    if (modalOverlay) {
-        console.log('Closing modal:', modalId);
-        modalOverlay.style.opacity = '0';
-        modalOverlay.style.pointerEvents = 'none'; // Prevent interactions during fade out
+    const modalId = 'saleDetailModal_' + Date.now();
+    const modal = document.createElement('div');
+    modal.id = modalId;
+    modal.className = 'modal-overlay sale-detail-modal';
+    
+    // Force display with inline styles to ensure modal shows
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 1;
+    `;
 
-        setTimeout(() => {
-            if (modalOverlay.parentNode) {
-                modalOverlay.parentNode.removeChild(modalOverlay);
-                console.log('Modal removed from DOM:', modalId);
-            }
-            // Check if this was the sales detail modal before resetting the flag
-            if (modalId && modalId.startsWith('saleDetailModalOverlay')) {
-                 isSaleDetailModalOpen = false;
-            }
-        }, 300); // Match animation time if any
-    } else {
-        console.warn('closeModal called with ID, but modal overlay not found:', modalId);
-        // Fallback, if somehow the ID was lost but we know it's a sales detail modal context
-        isSaleDetailModalOpen = false; 
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; width: 90%; background: white; border-radius: 12px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); max-height: 90vh; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem;">🧾 Chi tiết hóa đơn #${saleData.sale_code || saleData.id}</h3>
+                <button class="modal-close" onclick="closeDynamicModal('${modalId}')" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0.25rem 0.5rem;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem; max-height: 60vh; overflow-y: auto;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="sale-info">
+                        <h4 style="color: #667eea; margin-bottom: 0.5rem;">📝 Thông tin hóa đơn</h4>
+                        <p><strong>Mã hóa đơn:</strong> ${saleData.sale_code}</p>
+                        <p><strong>Ngày bán:</strong> ${saleData.created_at_formatted}</p>
+                        <p><strong>Nhân viên:</strong> ${saleData.cashier_name || 'Admin'}</p>
+                        <p><strong>Trạng thái:</strong> 
+                            <span style="background: #4facfe; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">Hoàn thành</span>
+                        </p>
+                    </div>
+                    <div class="customer-info">
+                        <h4 style="color: #667eea; margin-bottom: 0.5rem;">👤 Thông tin khách hàng</h4>
+                        <p><strong>Tên khách:</strong> ${saleData.customer_name || 'Khách lẻ'}</p>
+                        <p><strong>Điện thoại:</strong> ${saleData.customer_phone || 'Không có'}</p>
+                        <p><strong>Email:</strong> ${saleData.customer_email || 'Không có'}</p>
+                        <p><strong>Địa chỉ:</strong> ${saleData.customer_address || 'Không có'}</p>
+                    </div>
+                </div>
+
+                <h4 style="color: #667eea; margin-bottom: 0.5rem;">🛒 Danh sách sản phẩm</h4>
+                <div class="table-responsive">
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                        <thead>
+                            <tr style="background: #f8f9ff;">
+                                <th style="padding: 0.75rem; text-align: left; border: 1px solid #e1e5e9;">Mã SP</th>
+                                <th style="padding: 0.75rem; text-align: left; border: 1px solid #e1e5e9;">Tên sản phẩm</th>
+                                <th style="padding: 0.75rem; text-align: center; border: 1px solid #e1e5e9;">Số lượng</th>
+                                <th style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;">Đơn giá</th>
+                                <th style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${details.map(item => `
+                                <tr>
+                                    <td style="padding: 0.75rem; border: 1px solid #e1e5e9;">${item.product_code}</td>
+                                    <td style="padding: 0.75rem; border: 1px solid #e1e5e9;">${item.product_name}</td>
+                                    <td style="padding: 0.75rem; text-align: center; border: 1px solid #e1e5e9;">${item.quantity}</td>
+                                    <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;">${item.unit_price_formatted}đ</td>
+                                    <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;"><strong>${item.total_price_formatted}đ</strong></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #f8f9ff;">
+                                <td colspan="4" style="padding: 0.75rem; border: 1px solid #e1e5e9;"><strong>Tạm tính:</strong></td>
+                                <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;"><strong>${saleData.total_amount_formatted}đ</strong></td>
+                            </tr>
+                            ${saleData.discount_amount && parseFloat(saleData.discount_amount) > 0 ? `
+                            <tr style="background: #f8f9ff;">
+                                <td colspan="4" style="padding: 0.75rem; border: 1px solid #e1e5e9;"><strong>Giảm giá:</strong></td>
+                                <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;"><strong>-${saleData.discount_amount_formatted}đ</strong></td>
+                            </tr>
+                            ` : ''}
+                            <tr style="background: #667eea; color: white;">
+                                <td colspan="4" style="padding: 0.75rem; border: 1px solid #e1e5e9;"><strong>Tổng cộng:</strong></td>
+                                <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;"><strong>${saleData.final_amount_formatted}đ</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 1rem; padding: 1rem 1.5rem; border-top: 1px solid #e1e5e9; background: #f8f9ff;">
+                <button type="button" onclick="closeDynamicModal('${modalId}')" style="background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Đóng</button>
+                <button type="button" onclick="printInvoice(${saleData.id})" style="background: #667eea; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">🖨️ In hóa đơn</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    console.log('[showSaleDetailModal] Modal appended to body. ID:', modalId, 'Element:', modal);
+}
+
+// Close dynamic modal function (shared with imports)
+function closeDynamicModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.remove();
+        console.log('[closeDynamicModal] Modal removed:', modalId);
     }
 }
 
