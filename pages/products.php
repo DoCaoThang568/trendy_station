@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     switch ($action) {        case 'add_product':
-            $product_code = $_POST['product_code']; // Sửa 'code' thành 'product_code'
+            $product_code = $_POST['product_code'];
             $name = $_POST['name'];
             $category_id = $_POST['category_id'];
             $size = $_POST['size'];
@@ -51,7 +51,7 @@ $where = "1=1";
 $params = [];
 
 if ($search) {
-    $where .= " AND (p.name LIKE ? OR p.product_code LIKE ? OR c.name LIKE ?)"; // Sửa p.code thành p.product_code
+    $where .= " AND (p.name LIKE ? OR p.product_code LIKE ? OR c.name LIKE ?)";
     $searchTerm = "%$search%";
     $params = [$searchTerm, $searchTerm, $searchTerm];
 }
@@ -68,7 +68,7 @@ $products = fetchAll($sql, $params);
 $categories = fetchAll("SELECT * FROM categories ORDER BY name");
 
 // Generate new product code
-$newProductCode = generateCode('SP', 'products', 'product_code'); // Sửa 'code' thành 'product_code'
+$newProductCode = generateCode('SP', 'products', 'product_code');
 ?>
 
 <h1 class="page-title">📦 Quản lý Sản phẩm</h1>
@@ -107,8 +107,13 @@ $newProductCode = generateCode('SP', 'products', 'product_code'); // Sửa 'code
             <?php else: ?>
                 <?php foreach ($products as $product): ?>
                     <tr>
-                        <td><strong><?php echo htmlspecialchars($product['product_code']); ?></strong></td> // Sửa 'code' thành 'product_code'
-                        <td><?php echo htmlspecialchars($product['name']); ?></td>
+                        <td><strong><?php echo htmlspecialchars($product['product_code']); ?></strong></td>
+                        <td>
+                            <div class="product-info">
+                                <span class="product-name"><?php echo htmlspecialchars($product['name']); ?></span>
+                                <span class="product-code">Mã: <?php echo htmlspecialchars($product['product_code']); ?></span>
+                            </div>
+                        </td>
                         <td>
                             <span style="background: var(--primary-color); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem;">
                                 <?php echo htmlspecialchars($product['category_name'] ?? 'Chưa phân loại'); ?>
@@ -118,23 +123,23 @@ $newProductCode = generateCode('SP', 'products', 'product_code'); // Sửa 'code
                         <td><?php echo htmlspecialchars($product['color']); ?></td>
                         <td><strong style="color: var(--success-color);"><?php echo number_format($product['selling_price']); ?>đ</strong></td>
                         <td>
-                            <span style="background: <?php echo $product['stock_quantity'] <= (isset($product['min_stock']) ? $product['min_stock'] : 0) ? 'var(--danger-color)' : 'var(--success-color)'; ?>; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem;">
+                            <span class="stock-badge <?php echo $product['stock_quantity'] <= (isset($product['min_stock']) ? $product['min_stock'] : 10) ? 'stock-low' : 'stock-ok'; ?>">
                                 <?php echo $product['stock_quantity']; ?>
                             </span>
                         </td>
                         <td>
-                            <?php if ($product['is_active']): ?> // Sửa 'status' === 'active' thành 'is_active'
-                                <span style="background: var(--success-gradient); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem;">✅ Hoạt động</span>
+                            <?php if ($product['is_active']): ?>
+                                <span class="status-badge status-active">✅ Hoạt động</span>
                             <?php else: ?>
-                                <span style="background: var(--danger-gradient); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem;">❌ Ngừng bán</span>
+                                <span class="status-badge status-inactive">❌ Ngừng bán</span>
                             <?php endif; ?>
                         </td>
                         <td>
                             <button class="btn btn-small btn-secondary" onclick="editProduct(<?php echo $product['id']; ?>)" title="Sửa">
-                                ✏️
+                                <i class="fas fa-edit"></i> Sửa
                             </button>
                             <button class="btn btn-small btn-danger" onclick="deleteProduct(<?php echo $product['id']; ?>, '<?php echo htmlspecialchars($product['name']); ?>')" title="Xóa">
-                                🗑️
+                                <i class="fas fa-trash"></i> Xóa
                             </button>
                         </td>
                     </tr>
@@ -159,7 +164,7 @@ $newProductCode = generateCode('SP', 'products', 'product_code'); // Sửa 'code
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="product_code">Mã sản phẩm <span class="required">*</span></label>
-                        <input type="text" name="product_code" id="product_code" value="<?php echo $newProductCode; ?>" required> // Sửa name và id từ 'code' thành 'product_code'
+                        <input type="text" name="product_code" id="product_code" value="<?php echo $newProductCode; ?>" readonly required>
                     </div>
                     
                     <div class="form-group">
@@ -247,8 +252,9 @@ function openProductModal() {
     document.getElementById('productForm').reset();
     document.querySelector('[name="action"]').value = 'add_product';
     document.getElementById('productId').value = '';
-    document.getElementById('product_code').value = '<?php echo $newProductCode; ?>';
+    document.getElementById('product_code').value = '<?php echo $newProductCode; ?>'; // Ensure new product code is set
     document.getElementById('productModal').style.display = 'block';
+    document.getElementById('name').focus(); // Focus on the first input field
 }
 
 // Edit product
