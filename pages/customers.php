@@ -212,11 +212,11 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 .stat-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 1.5rem;
-    border-radius: 12px;
+    padding: 1rem; /* Reduced padding */
+    border-radius: 10px; /* Slightly smaller border radius */
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem; /* Reduced gap */
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     transition: transform 0.2s;
 }
@@ -226,18 +226,34 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 .stat-icon {
-    font-size: 2rem;
+    font-size: 1.8rem; /* Increased icon size */
+    background-color: rgba(255, 255, 255, 0.15); /* Slightly more opaque background */
+    border-radius: 8px;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5); /* Added text shadow for icon */
+}
+
+.stat-info {
+    /* Added for better structure if needed, or can be merged */
 }
 
 .stat-number {
-    font-size: 1.5rem;
+    font-size: 1.4rem; /* Increased font size */
     font-weight: bold;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.15rem;
+    color: #FFFFFF; /* Explicit white color */
+    text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.4); /* Added text shadow */
 }
 
 .stat-label {
-    opacity: 0.9;
-    font-size: 0.9rem;
+    opacity: 1; /* Fully opaque */
+    font-size: 0.85rem; /* Increased font size */
+    font-weight: 700;   /* Bold font weight */
+    color: #FFFFFF !important; /* Forced white color for diagnosis */
+    text-shadow: 0px 1px 1px rgba(0,0,0,0.7); /* Sharper, slightly offset dark shadow for contrast */
 }
 
 .search-box {
