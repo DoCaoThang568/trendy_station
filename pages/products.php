@@ -205,7 +205,6 @@ $newProductCode = generateCode('SP', 'products', 'product_code');
                         <td>
                             <div class="product-info">
                                 <span class="product-name"><?php echo htmlspecialchars($product['name']); ?></span>
-                                <span class="product-code">Mã: <?php echo htmlspecialchars($product['product_code']); ?></span>
                             </div>
                         </td>
                         <td>
