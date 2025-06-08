@@ -276,19 +276,9 @@ $newProductCode = generateCode('SP', 'products', 'product_code');
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
-                    <div class="form-group">
+                      <div class="form-group">
                         <label for="size">Kích thước</label>
-                        <select name="size" id="size">
-                            <option value="">-- Chọn size --</option>
-                            <option value="XS">XS</option>
-                            <option value="S">S</option>
-                            <option value="M">M</option>
-                            <option value="L">L</option>
-                            <option value="XL">XL</option>
-                            <option value="XXL">XXL</option>
-                            <option value="XXXL">XXXL</option>
-                        </select>
+                        <input type="text" name="size" id="size" placeholder="Ví dụ: S, M, L hoặc 36, 37, 38">
                     </div>
                     
                     <div class="form-group">
