@@ -5,10 +5,10 @@ $page_title = "Tổng quan - Dashboard";
 // Lấy thống kê tổng quan
 try {
     // Thống kê sản phẩm
-    $stmt = $pdo->query("SELECT COUNT(*) as total_products FROM products WHERE status = 1");
+    $stmt = $pdo->query("SELECT COUNT(*) as total_products FROM products WHERE is_active = 1"); // MODIFIED: status to is_active
     $total_products = $stmt->fetch()['total_products'];
     
-    $stmt = $pdo->query("SELECT COUNT(*) as low_stock FROM products WHERE stock_quantity <= 5 AND status = 1");
+    $stmt = $pdo->query("SELECT COUNT(*) as low_stock FROM products WHERE stock_quantity <= 5 AND is_active = 1"); // MODIFIED: status to is_active
     $low_stock_products = $stmt->fetch()['low_stock'];
     
     // Thống kê bán hàng hôm nay
@@ -45,12 +45,12 @@ try {
     
     // Hóa đơn gần đây
     $stmt = $pdo->query("
-        SELECT s.sale_id, s.sale_date, c.customer_name, s.total_amount, s.payment_method
+        SELECT s.id as sale_pk_id, s.sale_code, s.sale_date, c.name as customer_name, s.total_amount, s.payment_method
         FROM sales s
-        LEFT JOIN customers c ON s.customer_id = c.customer_id
+        LEFT JOIN customers c ON s.customer_id = c.id 
         ORDER BY s.sale_date DESC
         LIMIT 5
-    ");
+    "); // MODIFIED: selected s.id as sale_pk_id, s.sale_code, c.name and join condition c.id
     $recent_sales = $stmt->fetchAll();
     
 } catch (Exception $e) {
@@ -214,7 +214,7 @@ try {
                                 <?php foreach ($recent_sales as $sale): ?>
                                     <tr>
                                         <td>
-                                            <span class="invoice-id">#<?= $sale['sale_id'] ?></span>
+                                            <span class="invoice-id">#<?= htmlspecialchars($sale['sale_code']) ?></span> 
                                         </td>
                                         <td>
                                             <?= date('d/m H:i', strtotime($sale['sale_date'])) ?>
@@ -227,14 +227,14 @@ try {
                                         </td>
                                         <td>
                                             <span class="badge badge-<?= $sale['payment_method'] == 'cash' ? 'success' : 'info' ?>">
-                                                <?= $sale['payment_method'] == 'cash' ? 'Tiền mặt' : 'Chuyển khoản' ?>
+                                                <?= $sale['payment_method'] == 'cash' ? 'Tiền mặt' : ($sale['payment_method'] == 'bank_transfer' ? 'Chuyển khoản' : htmlspecialchars(ucfirst($sale['payment_method']))) ?>
                                             </span>
                                         </td>
                                         <td>
-                                            <button onclick="viewSaleDetail(<?= $sale['sale_id'] ?>)" class="btn btn-sm btn-outline-primary" title="Xem chi tiết">
+                                            <button onclick="viewSaleDetail(<?= $sale['sale_pk_id'] ?>)" class="btn btn-sm btn-outline-primary" title="Xem chi tiết">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            <button onclick="printInvoice(<?= $sale['sale_id'] ?>)" class="btn btn-sm btn-outline-success" title="In hóa đơn">
+                                            <button onclick="printInvoice(<?= $sale['sale_pk_id'] ?>)" class="btn btn-sm btn-outline-success" title="In hóa đơn">
                                                 <i class="fas fa-print"></i>
                                             </button>
                                         </td>
