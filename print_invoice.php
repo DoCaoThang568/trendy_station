@@ -13,7 +13,9 @@ if (!$saleId) {
 
 // Get sale info
 $sale = fetchOne("
-    SELECT s.*, c.name as customer_name_db, c.phone as customer_phone_db, c.address as customer_address 
+    SELECT s.*, c.name as customer_name_db, c.phone as customer_phone_db, c.address as customer_address, 
+           s.cashier_name as created_by, /* Use cashier_name as created_by */
+           s.total_amount as subtotal /* Use total_amount as subtotal before discount if no separate subtotal field */
     FROM sales s 
     LEFT JOIN customers c ON s.customer_id = c.id 
     WHERE s.id = ?
@@ -236,16 +238,17 @@ function formatVietnameseDate($dateString) {
         <div class="invoice-info">
             <div class="info-section">
                 <h4>📋 Thông tin hóa đơn</h4>
-                <p><strong>Số hóa đơn:</strong> <?php echo $sale['sale_code']; ?></p>
+                <p><strong>Số hóa đơn:</strong> <?php echo htmlspecialchars($sale['sale_code']); ?></p>
                 <p><strong>Ngày bán:</strong> <?php echo formatVietnameseDate($sale['sale_date']); ?></p>
-                <p><strong>Nhân viên:</strong> <?php echo htmlspecialchars($sale['created_by']); ?></p>
+                <p><strong>Nhân viên:</strong> <?php echo htmlspecialchars($sale['created_by'] ?? 'N/A'); ?></p>
                 <p><strong>Thanh toán:</strong> 
                     <?php 
                     switch($sale['payment_method']) {
                         case 'cash': echo '💵 Tiền mặt'; break;
                         case 'card': echo '💳 Thẻ'; break;
-                        case 'transfer': echo '🏦 Chuyển khoản'; break;
-                        default: echo $sale['payment_method'];
+                        // MODIFIED: Changed 'transfer' to 'bank_transfer' to match database enum and dashboard
+                        case 'bank_transfer': echo '🏦 Chuyển khoản'; break; 
+                        default: echo htmlspecialchars($sale['payment_method']);
                     }
                     ?>
                 </p>
@@ -253,11 +256,11 @@ function formatVietnameseDate($dateString) {
             
             <div class="info-section">
                 <h4>👤 Thông tin khách hàng</h4>
-                <p><strong>Tên:</strong> <?php echo htmlspecialchars($sale['customer_name'] ?: $sale['customer_name_db']); ?></p>
-                <?php if ($sale['customer_phone'] || $sale['customer_phone_db']): ?>
-                    <p><strong>Điện thoại:</strong> <?php echo htmlspecialchars($sale['customer_phone'] ?: $sale['customer_phone_db']); ?></p>
+                <p><strong>Tên:</strong> <?php echo htmlspecialchars($sale['customer_name'] ?: ($sale['customer_name_db'] ?? 'Khách lẻ')); ?></p>
+                <?php if (!empty($sale['customer_phone']) || !empty($sale['customer_phone_db'])): ?>
+                    <p><strong>Điện thoại:</strong> <?php echo htmlspecialchars($sale['customer_phone'] ?: ($sale['customer_phone_db'] ?? 'N/A')); ?></p>
                 <?php endif; ?>
-                <?php if ($sale['customer_address']): ?>
+                <?php if (!empty($sale['customer_address'])): ?>
                     <p><strong>Địa chỉ:</strong> <?php echo htmlspecialchars($sale['customer_address']); ?></p>
                 <?php endif; ?>
             </div>
@@ -275,17 +278,17 @@ function formatVietnameseDate($dateString) {
             </thead>
             <tbody>
                 <?php foreach ($saleDetails as $detail): ?>
-                    <?php $subtotal = $detail['quantity'] * $detail['unit_price']; ?>
+                    <?php $item_total = $detail['quantity'] * $detail['unit_price']; ?>
                     <tr>
                         <td>
                             <strong><?php echo htmlspecialchars($detail['product_name']); ?></strong>
-                            <?php if ($detail['product_code']): ?>
+                            <?php if (!empty($detail['product_code'])): ?>
                                 <br><small style="color: #666;">Mã: <?php echo htmlspecialchars($detail['product_code']); ?></small>
                             <?php endif; ?>
                         </td>
-                        <td><?php echo number_format($detail['quantity']); ?><?php echo $detail['unit'] ? ' ' . $detail['unit'] : ''; ?></td>
+                        <td><?php echo number_format($detail['quantity']); ?></td> 
                         <td><?php echo number_format($detail['unit_price']); ?>₫</td>
-                        <td><strong><?php echo number_format($subtotal); ?>₫</strong></td>
+                        <td><strong><?php echo number_format($item_total); ?>₫</strong></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -295,19 +298,19 @@ function formatVietnameseDate($dateString) {
         <div class="total-section">
             <div class="total-row">
                 <span>Tạm tính:</span>
-                <span><?php echo number_format($sale['subtotal']); ?>₫</span>
+                <span><?php echo number_format($sale['subtotal'] ?? 0); ?>₫</span>
             </div>
             
-            <?php if ($sale['discount_percent'] > 0): ?>
+            <?php if (!empty($sale['discount_amount']) && $sale['discount_amount'] > 0): ?>
                 <div class="total-row">
-                    <span>Giảm giá (<?php echo $sale['discount_percent']; ?>%):</span>
+                    <span>Giảm giá <?php echo ($sale['discount_percent'] > 0 ? '(' . $sale['discount_percent'] . '%)</span>' : ''); ?>:
                     <span style="color: #dc3545;">-<?php echo number_format($sale['discount_amount']); ?>₫</span>
                 </div>
             <?php endif; ?>
             
             <div class="total-row final">
                 <span>TỔNG CỘNG:</span>
-                <span><?php echo number_format($sale['total_amount']); ?>₫</span>
+                <span><?php echo number_format($sale['final_amount'] ?? 0); ?>₫</span>
             </div>
         </div>
 
