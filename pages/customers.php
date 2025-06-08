@@ -248,7 +248,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.4); /* Added text shadow */
 }
 
-.stat-label {
+.stat-card .stat-label { /* Made selector more specific */
     opacity: 1; /* Fully opaque */
     font-size: 0.85rem; /* Increased font size */
     font-weight: 700;   /* Bold font weight */
@@ -552,6 +552,20 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }
 
+/* Visually hidden class for screen readers and alignment */
+.visually-hidden,
+.visually-hidden-focusable:not(:focus):not(:focus-within) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .stat-card {
@@ -625,34 +639,43 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 
     <!-- Bộ lọc và tìm kiếm -->
     <div class="filters-section mb-4">
-        <div class="row">
-            <div class="col-md-4">
-                <div class="search-box">
+        <form class="row g-3 align-items-end" id="filterForm">
+            <div class="col-md">
+                <label for="searchInput" class="visually-hidden">Tìm kiếm</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
                     <input type="text" id="searchInput" class="form-control" 
-                           placeholder="🔍 Tìm kiếm khách hàng... (F2)" value="<?php echo htmlspecialchars($search); ?>">
+                           placeholder="Tìm kiếm khách hàng... (F2)" value="<?php echo htmlspecialchars($search); ?>">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-auto">
+                <label for="statusFilter" class="visually-hidden">Trạng thái</label>
                 <select id="statusFilter" class="form-select">
                     <option value="all">Tất cả trạng thái</option>
                     <option value="active" <?php echo $status_filter === 'active' ? 'selected' : ''; ?>>Hoạt động</option>
                     <option value="inactive" <?php echo $status_filter === 'inactive' ? 'selected' : ''; ?>>Không hoạt động</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-auto">
+                <label for="membershipFilter" class="visually-hidden">Hạng</label>
                 <select id="membershipFilter" class="form-select">
-                    <option value="all">Tất cả hạng thành viên</option>
+                    <option value="all">Tất cả hạng</option>
                     <option value="Thông thường" <?php echo $membership_filter === 'Thông thường' ? 'selected' : ''; ?>>Thông thường</option>
                     <option value="VIP" <?php echo $membership_filter === 'VIP' ? 'selected' : ''; ?>>VIP</option>
                     <option value="VVIP" <?php echo $membership_filter === 'VVIP' ? 'selected' : ''; ?>>VVIP</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
-                    <i class="fas fa-undo"></i> Reset
+            <div class="col-md-auto">
+                <button type="button" class="btn btn-primary" onclick="applyFiltersAndSubmit()">
+                    <i class="fas fa-filter"></i> Lọc
                 </button>
             </div>
-        </div>
+            <div class="col-md-auto">
+                <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()" title="Reset Filters">
+                    <i class="fas fa-undo"></i>
+                </button>
+            </div>
+        </form>
     </div>
 
     <!-- Danh sách khách hàng -->
@@ -960,7 +983,7 @@ document.getElementById('searchInput').addEventListener('input', function() {
 document.getElementById('statusFilter').addEventListener('change', applyFilters);
 document.getElementById('membershipFilter').addEventListener('change', applyFilters);
 
-function applyFilters() {
+function applyFiltersAndSubmit() {
     const search = document.getElementById('searchInput').value;
     const status = document.getElementById('statusFilter').value;
     const membership = document.getElementById('membershipFilter').value;
@@ -969,10 +992,14 @@ function applyFilters() {
         search: search,
         status: status,
         membership: membership,
-        page: 1
+        page: 1 // Reset to page 1 when applying filters
     });
     
     window.location.href = '?' + params.toString();
+}
+
+function applyFilters() { // This function might be called by existing event listeners, ensure it calls the new submit logic
+    applyFiltersAndSubmit();
 }
 
 function resetFilters() {
