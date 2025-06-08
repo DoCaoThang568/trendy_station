@@ -215,9 +215,9 @@ $newImportCode = generateCode('NH', 'imports', 'import_code');
             
             <!-- Danh sách sản phẩm nhập -->
             <div class="invoice-items">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
                     <h3>📋 Danh sách sản phẩm nhập</h3>
-                    <div style="display: flex; gap: 0.5rem;">
+                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
                         <input type="text" id="productSearch" placeholder="🔍 Tìm sản phẩm... (F2)" 
                                style="width: 200px;" onkeyup="searchProducts(this.value)"
                                title="Nhập mã hoặc tên sản phẩm để tìm kiếm">

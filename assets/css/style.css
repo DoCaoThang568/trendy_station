@@ -490,8 +490,9 @@ tbody tr:hover td {
     padding: 2.5rem;
     border-radius: var(--border-radius-large);
     box-shadow: var(--shadow-medium);
-    max-width: 800px;
+    max-width: 1000px; /* Increased max-width, adjust as needed or remove for full flexibility */
     border: 1px solid rgba(255, 255, 255, 0.2);
+    overflow-x: auto; 
 }
 
 .form-grid {
@@ -648,19 +649,45 @@ textarea {
 /* Enhanced Item Row */
 .item-row {
     display: grid;
-    grid-template-columns: 2fr 80px 120px 120px 50px;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Responsive columns */
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--bg-tertiary);
+    width: 100%; /* Ensure it takes full width of its container */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+.item-row:last-child {
+    border-bottom: none;
+}
+
+.item-row > * { /* Target direct children of item-row */
+    width: 100%; /* Make form elements take full width of their grid cell */
+    min-width: 0; /* Allow items to shrink properly in flex/grid layouts */
+}
+
+.item-row select,
+.item-row input[type="number"],
+.item-row input[type="text"] {
     padding: 0.75rem;
-    background: rgba(102, 126, 234, 0.02);
-    border-radius: 8px;
-    border: 1px solid rgba(102, 126, 234, 0.1);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: var(--border-radius-small);
+    font-size: 0.9rem;
     transition: var(--transition);
 }
 
-.item-row:hover {
-    background: rgba(102, 126, 234, 0.05);
-    border-color: rgba(102, 126, 234, 0.2);
+.item-row select:focus,
+.item-row input[type="number"]:focus,
+.item-row input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.item-row .btn-danger {
+    padding: 0.75rem; /* Ensure button padding is consistent */
+    justify-self: end; /* Align button to the end of its grid cell if needed */
 }
 
 /* Search Enhancement */
@@ -1062,4 +1089,61 @@ textarea {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Enhanced Item Row for Sales Page */
+.item-row {
+    display: grid;
+    /* Product Select, Qty, Unit Price / Cost Price, Total, Remove Btn */
+    grid-template-columns: minmax(0, 2.5fr) minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(0, 1.2fr) auto;
+    gap: 0.5rem; /* Reduced gap */
+    align-items: center;
+    padding: 0.75rem 0; /* Adjusted vertical padding slightly */
+    border-bottom: 1px solid var(--bg-tertiary);
+    width: 100%; 
+    box-sizing: border-box; 
+}
+
+.item-row:last-child {
+    border-bottom: none;
+}
+
+.item-row > * { /* Target direct children of item-row */
+    width: 100%; 
+    min-width: 0; /* CRITICAL: Allows grid items to shrink below their content size */
+    box-sizing: border-box; 
+}
+
+.item-row select,
+.item-row input[type="number"],
+.item-row input[type="text"] {
+    padding: 0.6rem; /* Slightly reduced padding */
+    border: 1px solid var(--bg-tertiary);
+    border-radius: var(--border-radius-small);
+    font-size: 0.9rem;
+    transition: var(--transition);
+    box-sizing: border-box; /* Ensure box-sizing */
+}
+
+.item-row select:focus,
+.item-row input[type="number"]:focus,
+.item-row input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.item-row .btn-danger {
+    padding: 0.6rem; /* Match input padding for consistency */
+    /* Ensure the button itself doesn't have an excessive min-width */
+    min-width: fit-content; 
+}
+
+.invoice-items {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-light);
+    overflow: hidden; /* Added to contain item rows if they somehow still try to overflow */
 }
