@@ -120,7 +120,7 @@ $products_stmt = $pdo->query("
 $products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get customers for selection
-$customers = fetchAll("SELECT * FROM customers WHERE status = 'active' ORDER BY name");
+$customers = fetchAll("SELECT * FROM customers WHERE is_active = 1 ORDER BY name");
 
 // Generate new sale code
 $newSaleCode = generateCode('HD', 'sales', 'sale_code');

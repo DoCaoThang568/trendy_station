@@ -94,16 +94,23 @@ function fetchOne($sql, $params = []) {
 }
 
 /**
- * Function đếm số records
+ * Function định dạng ngày tháng
  */
-function countRecords($table, $where = '1=1', $params = []) {
-    $sql = "SELECT COUNT(*) as total FROM $table WHERE $where";
-    $result = fetchOne($sql, $params);
-    return $result['total'];
+function formatDate($dateString, $format = 'd/m/Y H:i:s') {
+    if (!$dateString) {
+        return null;
+    }
+    try {
+        $date = new DateTime($dateString);
+        return $date->format($format);
+    } catch (Exception $e) {
+        // Trả về chuỗi gốc nếu không parse được
+        return $dateString;
+    }
 }
 
 /**
- * Function tạo mã code tự động
+ * Function tạo mã tự động (VD: HD001, SP001)
  */
 function generateCode($prefix, $table, $column) {
     $sql = "SELECT MAX(CAST(SUBSTRING($column, " . (strlen($prefix) + 1) . ") AS UNSIGNED)) as max_num 
