@@ -21,17 +21,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $supplier_name = $_POST['supplier_name'];
                 $supplier_phone = $_POST['supplier_phone'];
                 $total_amount = floatval($_POST['total_amount']);
-                $payment_status = $_POST['payment_status'];
+                $payment_status = $_POST['payment_status']; // This line is kept to avoid breaking POST data expectations, but $payment_status is not used below
                 $notes = $_POST['notes'];
                 
                 // Insert import record
+                // Removed payment_status from the INSERT query
                 $sql = "INSERT INTO imports (import_code, supplier_id, supplier_name, supplier_phone, 
-                               total_amount, payment_status, notes, created_by) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'admin')";
+                               total_amount, notes, created_by) 
+                        VALUES (?, ?, ?, ?, ?, ?, 'admin')";
                 
                 $stmt = executeQuery($sql, [
                     $importCode, $supplier_id, $supplier_name, $supplier_phone,
-                    $total_amount, $payment_status, $notes
+                    $total_amount, $notes // Removed $payment_status from parameters
                 ]);
                 
                 $importId = $pdo->lastInsertId();
@@ -52,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ]);
                         
                         // Update stock
-                        $sql = "UPDATE products SET stock_quantity = stock_quantity + ?, import_price = ? WHERE id = ?";
+                        $sql = "UPDATE products SET stock_quantity = stock_quantity + ?, cost_price = ? WHERE id = ?";
                         executeQuery($sql, [$product['quantity'], $product['unit_cost'], $product['product_id']]);
                         
                         // Record stock movement
@@ -140,7 +141,7 @@ $products_stmt = $pdo->query("
         p.name, 
         p.product_code, 
         p.stock_quantity, 
-        p.import_price, 
+        p.cost_price as import_price, /* Use cost_price and alias it as import_price */
         p.selling_price,
         c.name as category_name
     FROM products p
@@ -151,7 +152,7 @@ $products_stmt = $pdo->query("
 $products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get suppliers for selection
-$suppliers = fetchAll("SELECT * FROM suppliers WHERE status = 'active' ORDER BY name");
+$suppliers = fetchAll("SELECT * FROM suppliers WHERE is_active = 1 ORDER BY name");
 
 // Generate new import code
 $newImportCode = generateCode('NH', 'imports', 'import_code');
@@ -286,17 +287,21 @@ $newImportCode = generateCode('NH', 'imports', 'import_code');
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
                                 <span style="background: 
                                     <?php 
-                                    switch($import['payment_status']) {
-                                        case 'paid': echo 'var(--success-gradient)'; break;
-                                        case 'partial': echo 'var(--warning-gradient)'; break;
-                                        default: echo 'var(--danger-gradient)';
+                                    // Use $import['status'] which exists
+                                    switch($import['status']) {
+                                        case 'Hoàn thành': echo 'var(--success-gradient)'; break;
+                                        case 'Đang xử lý': echo 'var(--warning-gradient)'; break;
+                                        case 'Đã hủy': echo 'var(--danger-gradient)'; break;
+                                        default: echo 'var(--secondary-gradient)'; // Fallback
                                     }
                                     ?>; color: white; padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem;">
                                     <?php 
-                                    switch($import['payment_status']) {
-                                        case 'paid': echo '✅ Đã TT'; break;
-                                        case 'partial': echo '💰 TT 1 phần'; break;
-                                        default: echo '⏳ Chưa TT';
+                                    // Use $import['status'] for display text
+                                    switch($import['status']) {
+                                        case 'Hoàn thành': echo '✅ Hoàn thành'; break;
+                                        case 'Đang xử lý': echo '⏳ Đang xử lý'; break;
+                                        case 'Đã hủy': echo '❌ Đã hủy'; break;
+                                        default: echo htmlspecialchars($import['status']); // Fallback
                                     }
                                     ?>
                                 </span>                                <div style="display: flex; gap: 0.3rem;">
