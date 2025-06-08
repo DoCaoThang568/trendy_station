@@ -307,14 +307,167 @@ const revenueChart = new Chart(ctx, {
     }
 });
 
-// View sale detail (dummy function, replace with actual implementation)
+// View sale detail - Updated to use same pattern as sales page
 function viewSaleDetail(saleId) {
-    // This function should ideally open a modal with sale details
-    // For now, it can redirect to a detailed sale page or show an alert
-    // Example: window.location.href = `?page=sales&action=view&id=${saleId}`;
-    showToast(`Xem chi tiết hóa đơn #${saleId}`, 'info');
-    // Implement actual modal display or page redirect here
-    // You might need an AJAX call to fetch sale details first
+    console.log(`[viewSaleDetail] Called for saleId: ${saleId}`);
+    showToast('Đang tải chi tiết hóa đơn...', 'info');
+    fetch(`ajax/get_sale_detail.php?id=${saleId}`)
+        .then(response => {
+            console.log('[viewSaleDetail] Fetch response received:', response);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error('[viewSaleDetail] HTTP error response text:', text);
+                    throw new Error(`Lỗi HTTP ${response.status}: ${text || 'Không có thông tin lỗi chi tiết'}`);
+                });
+            }
+            return response.text(); 
+        })
+        .then(text => {
+            console.log('[viewSaleDetail] Response text received:', text);
+            try {
+                const data = JSON.parse(text);
+                console.log('[viewSaleDetail] Parsed JSON data:', data);
+                if (data.error) {
+                    showToast(`Lỗi tải chi tiết: ${data.error}`, 'error');
+                    console.error('[viewSaleDetail] Server error in JSON:', data.error);
+                    return;
+                }
+                // Check if sale and details data are present
+                if (data.sale && data.details) {
+                    console.log('[viewSaleDetail] Data is valid, calling showSaleDetailModal.');
+                    showSaleDetailModal(data.sale, data.details);
+                } else {
+                    console.error('[viewSaleDetail] Invalid data structure received:', data);
+                    showToast('Lỗi: Dữ liệu chi tiết hóa đơn không đầy đủ.', 'error');
+                }
+            } catch (e) {
+                console.error('[viewSaleDetail] Lỗi phân tích JSON:', e);
+                console.error('[viewSaleDetail] Dữ liệu nhận được không phải JSON:', text);
+                showToast('Lỗi: Dữ liệu trả về không hợp lệ. Vui lòng kiểm tra console (F12).', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('[viewSaleDetail] Lỗi khi tải chi tiết hóa đơn:', error);
+            showToast(`Lỗi: ${error.message}`, 'error');
+        });
+}
+
+// Show sale detail modal
+function showSaleDetailModal(saleData, details) {
+    console.log('[showSaleDetailModal] Called with saleData:', saleData, 'and details:', details);
+    
+    const existingModal = document.querySelector('.modal-overlay.sale-detail-modal');
+    if (existingModal) {
+        console.log('[showSaleDetailModal] Removing existing sale detail modal.');
+        existingModal.remove();
+    }
+
+    const modalId = 'saleDetailModal_' + Date.now();
+    const modal = document.createElement('div');
+    modal.id = modalId;
+    modal.className = 'modal-overlay sale-detail-modal';
+    
+    // Force display with inline styles to ensure modal shows
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 1;
+    `;
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; width: 90%; background: white; border-radius: 12px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); max-height: 90vh; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem;">🧾 Chi tiết hóa đơn #${saleData.sale_code || saleData.id}</h3>
+                <button class="modal-close" onclick="closeDynamicModal('${modalId}')" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0.25rem 0.5rem;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem; max-height: 60vh; overflow-y: auto;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="sale-info">
+                        <h4 style="color: #667eea; margin-bottom: 0.5rem;">📝 Thông tin hóa đơn</h4>
+                        <p><strong>Mã hóa đơn:</strong> ${saleData.sale_code}</p>
+                        <p><strong>Ngày bán:</strong> ${saleData.created_at_formatted}</p>
+                        <p><strong>Nhân viên:</strong> ${saleData.cashier_name || 'Admin'}</p>
+                        <p><strong>Trạng thái:</strong> 
+                            <span style="background: #4facfe; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">Hoàn thành</span>
+                        </p>
+                    </div>
+                    <div class="customer-info">
+                        <h4 style="color: #667eea; margin-bottom: 0.5rem;">👤 Thông tin khách hàng</h4>
+                        <p><strong>Tên khách:</strong> ${saleData.customer_name || 'Khách lẻ'}</p>
+                        <p><strong>Điện thoại:</strong> ${saleData.customer_phone || 'Không có'}</p>
+                        <p><strong>Email:</strong> ${saleData.customer_email || 'Không có'}</p>
+                        <p><strong>Địa chỉ:</strong> ${saleData.customer_address || 'Không có'}</p>
+                    </div>
+                </div>
+
+                <h4 style="color: #667eea; margin-bottom: 0.5rem;">🛒 Danh sách sản phẩm</h4>
+                <div class="table-responsive">
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                        <thead>
+                            <tr style="background: #f8f9ff;">
+                                <th style="padding: 0.75rem; text-align: left; border: 1px solid #e1e5e9;">Mã SP</th>
+                                <th style="padding: 0.75rem; text-align: left; border: 1px solid #e1e5e9;">Tên sản phẩm</th>
+                                <th style="padding: 0.75rem; text-align: center; border: 1px solid #e1e5e9;">Số lượng</th>
+                                <th style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;">Đơn giá</th>
+                                <th style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${details.map(item => `
+                                <tr>
+                                    <td style="padding: 0.75rem; border: 1px solid #e1e5e9;">${item.product_code}</td>
+                                    <td style="padding: 0.75rem; border: 1px solid #e1e5e9;">${item.product_name}</td>
+                                    <td style="padding: 0.75rem; text-align: center; border: 1px solid #e1e5e9;">${item.quantity}</td>
+                                    <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;">${item.unit_price_formatted}đ</td>
+                                    <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;"><strong>${item.total_price_formatted}đ</strong></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #f8f9ff;">
+                                <td colspan="4" style="padding: 0.75rem; border: 1px solid #e1e5e9;"><strong>Tạm tính:</strong></td>
+                                <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;"><strong>${saleData.total_amount_formatted}đ</strong></td>
+                            </tr>
+                            ${saleData.discount_amount && parseFloat(saleData.discount_amount) > 0 ? `
+                            <tr style="background: #f8f9ff;">
+                                <td colspan="4" style="padding: 0.75rem; border: 1px solid #e1e5e9;"><strong>Giảm giá:</strong></td>
+                                <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;"><strong>-${saleData.discount_amount_formatted}đ</strong></td>
+                            </tr>
+                            ` : ''}
+                            <tr style="background: #667eea; color: white;">
+                                <td colspan="4" style="padding: 0.75rem; border: 1px solid #e1e5e9;"><strong>Tổng cộng:</strong></td>
+                                <td style="padding: 0.75rem; text-align: right; border: 1px solid #e1e5e9;"><strong>${saleData.final_amount_formatted}đ</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 1rem; padding: 1rem 1.5rem; border-top: 1px solid #e1e5e9; background: #f8f9ff;">
+                <button type="button" onclick="closeDynamicModal('${modalId}')" style="background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Đóng</button>
+                <button type="button" onclick="printInvoice(${saleData.id})" style="background: #667eea; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">🖨️ In hóa đơn</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    console.log('[showSaleDetailModal] Modal appended to body. ID:', modalId, 'Element:', modal);
+}
+
+// Close dynamic modal function
+function closeDynamicModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.remove();
+        console.log('[closeDynamicModal] Modal removed:', modalId);
+    }
 }
 
 // Print invoice
@@ -357,16 +510,6 @@ document.addEventListener('keydown', function(event) {
             break;
     }
 });
-
-// Functions for recent sales actions
-function viewSaleDetail(saleId) {
-    // Sử dụng function từ sales.php
-    if (typeof window.viewSaleDetail === 'function') {
-        window.viewSaleDetail(saleId);
-    } else {
-        location.href = '?page=sales#sale-' + saleId;
-    }
-}
 
 function printInvoice(saleId) {
     window.open('print_invoice.php?id=' + saleId, '_blank');
