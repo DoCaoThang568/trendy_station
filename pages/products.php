@@ -756,7 +756,29 @@ function formatNumber(num) {
     return new Intl.NumberFormat('vi-VN').format(num);
 }
 
-// Ensure modal is hidden on page load and setup form handler
+function sortTableByProductCode() {
+    const tableBody = document.querySelector('#productsTable tbody');
+    if (!tableBody) return;
+
+    const rows = Array.from(tableBody.querySelectorAll('tr[data-id]')); // Select only rows with data-id
+
+    if (rows.length <= 1) return; // No need to sort if 0 or 1 data row
+
+    rows.sort((a, b) => {
+        const productCodeA = a.cells[0].textContent.trim().toUpperCase();
+        const productCodeB = b.cells[0].textContent.trim().toUpperCase();
+        
+        // Standard string comparison should work for "SP001", "SP009", "SP010"
+        if (productCodeA < productCodeB) return -1;
+        if (productCodeA > productCodeB) return 1;
+        return 0;
+    });
+
+    // Append sorted rows (this moves them to the end of the tbody in sorted order)
+    rows.forEach(row => tableBody.appendChild(row));
+}
+
+// Single DOMContentLoaded listener for page initialization
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('productModal');
     if (modal) {
@@ -803,18 +825,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Update the table or reload
                     if (action === 'add_product' && result.product_id) {
                         const updated = await updateProductRow(result.product_id);
-                        if (!updated) {
-                             // Fallback to reload if live update fails or is not preferred for simplicity
-                            location.reload();
+                        if (updated) {
+                            sortTableByProductCode(); // Sort after successful add
+                        } else {
+                            location.reload(); // Fallback
                         }
                     } else if (action === 'edit_product' && productIdValue) {
                         const updated = await updateProductRow(productIdValue);
-                        if (!updated) {
-                            location.reload();
+                        if (updated) {
+                            sortTableByProductCode(); // Sort after successful edit
+                        } else {
+                            location.reload(); // Fallback
                         }
                     } else {
-                        // General fallback if specific conditions not met
-                        location.reload();
+                        // General fallback if specific conditions not met or for simplicity
+                        location.reload(); 
                     }
                 } else {
                     showToast(result.message || 'Có lỗi xảy ra.', 'error');
@@ -830,5 +855,8 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         // console.error('Product form not found on page load'); // Optional: for debugging
     }
+
+    // Initial sort of the table on page load
+    sortTableByProductCode();
 });
 </script>
