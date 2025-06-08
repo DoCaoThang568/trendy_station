@@ -155,7 +155,7 @@ $products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
 $suppliers = fetchAll("SELECT * FROM suppliers WHERE is_active = 1 ORDER BY name");
 
 // Generate new import code
-$newImportCode = generateCode('NH', 'imports', 'import_code');
+$newImportCode = generateCode('PN', 'imports', 'import_code');
 ?>
 
 <h1 class="page-title">📦 Nhập hàng - Quản lý kho</h1>
