@@ -1,5 +1,5 @@
 <?php
-require_once '../config/database.php';
+require_once 'config/database.php';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -87,7 +87,6 @@ $returns = $returns_stmt->fetchAll();
 
 $page_title = "↩️ Quản lý Trả hàng";
 $current_page = "returns";
-include '../includes/header.php';
 ?>
 
 <div class="main-content">
@@ -601,5 +600,3 @@ function printReturn(returnId) {
     }
 }
 </script>
-
-<?php include '../includes/footer.php'; ?>

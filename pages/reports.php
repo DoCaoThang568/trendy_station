@@ -1,5 +1,5 @@
 <?php
-require_once '../config/database.php';
+require_once 'config/database.php';
 
 // Get date range for reports
 $start_date = $_GET['start_date'] ?? date('Y-m-01'); // First day of current month
@@ -22,14 +22,14 @@ $sales_summary = $sales_stmt->fetch();
 $top_products_stmt = $pdo->prepare("
     SELECT 
         p.name as product_name,
-        p.product_code as product_code, //Sửa p.code thành p.product_code
+        p.product_code as product_code, 
         SUM(sd.quantity) as total_sold,
         SUM(sd.total_price) as total_revenue
     FROM sale_details sd
     JOIN products p ON sd.product_id = p.id
     JOIN sales s ON sd.sale_id = s.id
     WHERE DATE(s.created_at) BETWEEN ? AND ?
-    GROUP BY p.id, p.name, p.product_code //Sửa p.code thành p.product_code
+    GROUP BY p.id, p.name, p.product_code 
     ORDER BY total_sold DESC
     LIMIT 10
 ");
@@ -65,7 +65,7 @@ $import_summary = $import_stmt->fetch();
 // Get low stock products
 $low_stock_stmt = $pdo->prepare("
     SELECT 
-        id, name, product_code, stock_quantity, //Sửa code thành product_code
+        id, name, product_code, stock_quantity, 
         CASE 
             WHEN stock_quantity = 0 THEN 'out_of_stock'
             WHEN stock_quantity <= 5 THEN 'very_low'
@@ -96,8 +96,8 @@ $customer_stats = $customer_stats_stmt->fetch();
 $profit_stmt = $pdo->prepare("
     SELECT 
         SUM(sd.total_price) as total_sales,
-        SUM(sd.quantity * p.cost_price) as estimated_cost, //Sửa p.purchase_price thành p.cost_price
-        (SUM(sd.total_price) - SUM(sd.quantity * p.cost_price)) as estimated_profit //Sửa p.purchase_price thành p.cost_price
+        SUM(sd.quantity * p.cost_price) as estimated_cost, 
+        (SUM(sd.total_price) - SUM(sd.quantity * p.cost_price)) as estimated_profit 
     FROM sale_details sd
     JOIN products p ON sd.product_id = p.id
     JOIN sales s ON sd.sale_id = s.id
@@ -107,7 +107,6 @@ $profit_stmt->execute([$start_date, $end_date]);
 $profit_analysis = $profit_stmt->fetch();
 
 $page_title = "📊 Báo cáo & Thống kê";
-include '../includes/header.php';
 ?>
 
 <div class="main-content">
@@ -635,5 +634,3 @@ setInterval(function() {
     }
 }, 300000); // 5 minutes
 </script>
-
-<?php include '../includes/footer.php'; ?>
