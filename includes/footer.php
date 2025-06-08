@@ -1,9 +1,11 @@
-    </div> <!-- End main-content -->
+</div> <!-- End main-content -->
 
     <!-- Footer -->
     <div class="footer">
-        <p>© <?php echo date('Y'); ?> The Trendy Station - Hệ thống quản lý shop thời trang hiện đại</p>
-        <p>🚀 Phát triển bởi nhóm 6 với ❤️ và công nghệ tiên tiến</p>
+        <div class="footer-main-text"> <!-- Added this wrapper -->
+            <p>© <?php echo date('Y'); ?> The Trendy Station - Hệ thống quản lý shop thời trang hiện đại</p>
+            <p>🚀 Phát triển bởi nhóm 6 với ❤️ và công nghệ tiên tiến</p>
+        </div> <!-- End of added wrapper -->
         <div style="margin-top: 1rem; display: flex; justify-content: center; gap: 2rem; align-items: center;">
             <span style="color: var(--primary-color); font-weight: 600;">📧 support@trendystation.com</span>
             <span style="color: var(--primary-color); font-weight: 600;">📞 1900-1234</span>

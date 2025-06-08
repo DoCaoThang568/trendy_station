@@ -193,6 +193,71 @@ body::before {
     border-radius: 2px;
 }
 
+/* Footer */
+.footer {
+    text-align: center; /* Center align the text within the footer */
+    padding: 2rem 1rem; /* Add some padding */
+    margin-top: 3rem; /* Add margin to separate from content */
+    background: linear-gradient(135deg, #f5f7ff 0%, #e8f0fe 100%); /* Subtle gradient background */
+    border-top: 1px solid rgba(102, 126, 234, 0.1); /* Light top border */
+    width: 100%; /* Ensure footer takes full width */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+.footer-main-text {
+    text-align: center; /* Ensure this div's content is centered */
+    width: 100%; /* Make sure it spans the full width to allow centering */
+}
+
+.footer p {
+    margin-bottom: 0.75rem; /* Space between paragraphs */
+    color: var(--text-secondary); /* Use secondary text color */
+    font-size: 0.95rem;
+}
+
+.footer p:first-child {
+    font-weight: 600; /* Make the copyright line a bit bolder */
+    color: var(--text-primary);
+}
+
+.footer div { /* Targeting the div containing contact info */
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center; /* Center the flex items (contact info) */
+    align-items: center; /* Align items vertically */
+    gap: 2.5rem; /* Increase gap for better spacing */
+    flex-wrap: wrap; /* Allow contact info to wrap on smaller screens */
+}
+
+.footer span {
+    color: var(--primary-color);
+    font-weight: 500; /* Slightly less bold than copyright */
+    font-size: 0.9rem;
+    transition: color 0.3s ease;
+}
+
+.footer span:hover {
+    color: var(--secondary-color); /* Darken on hover for interactivity */
+    text-decoration: underline;
+}
+
+/* Styling for the contact information container div, overriding inline styles if necessary or complementing them */
+.footer div[style*="justify-content: center"] { /* More specific selector for the contact div */
+    margin-top: 1.5rem; /* Ensure enough space above contact info */
+    gap: 2.5rem; /* Slightly increased gap for better separation */
+}
+
+.footer div[style*="justify-content: center"] span {
+    font-size: 0.9rem;
+    font-weight: 500; /* Slightly less bold if 600 is too much, or keep 600 */
+    color: var(--primary-color); /* Ensure color is applied if not inheriting correctly */
+    transition: color 0.3s ease;
+}
+
+.footer div[style*="justify-content: center"] span:hover {
+    color: var(--secondary-color); /* Interactive hover effect */
+}
+
 .toolbar {
     display: flex;
     justify-content: space-between;
