@@ -244,7 +244,7 @@ $newProductCode = generateCode('SP', 'products', 'product_code');
 </div>
 
 <!-- Modal Thêm/Sửa sản phẩm -->
-<div id="productModal" class="modal">
+<div id="productModal" class="modal" style="display: none; opacity: 0; transition: opacity 0.3s ease;">
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTitle">➕ Thêm sản phẩm mới</h3>
@@ -434,8 +434,20 @@ function openProductModal() {
         isActiveCheckbox.checked = true;
         document.getElementById('is_active_label').style.display = 'none'; // Hide for new products
     }
-    document.getElementById('productModal').style.display = 'block';
-    document.getElementById('name').focus(); // Focus on the first input field
+    
+    // Show modal with fade effect
+    const modal = document.getElementById('productModal');
+    modal.style.display = 'block';
+    modal.style.opacity = '0';
+    setTimeout(() => {
+        modal.style.opacity = '1';
+        modal.style.transition = 'opacity 0.3s ease';
+    }, 10);
+    
+    // Focus on the first input field after a short delay
+    setTimeout(() => {
+        document.getElementById('name').focus();
+    }, 100);
 }
 
 // Edit product
@@ -543,7 +555,13 @@ async function deleteProduct(id, name) {
 
 // Close modal
 function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+    const modal = document.getElementById(modalId);
+    modal.style.transition = 'opacity 0.3s ease';
+    modal.style.opacity = '0';
+    setTimeout(() => {
+        modal.style.display = 'none';
+        modal.style.opacity = '1'; // Reset for next time
+    }, 300);
 }
 
 // Close modal when clicking outside
@@ -806,7 +824,11 @@ document.getElementById('productForm').addEventListener('submit', async function
     } finally {
         // Restore button state
         submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-    }
+        submitBtn.textContent = originalText;    }
+});
+
+// Ensure modal is hidden on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('productModal').style.display = 'none';
 });
 </script>
