@@ -5,7 +5,7 @@
 
 require_once 'config/database.php';
 
-$saleId = $_GET['sale_id'] ?? 0;
+$saleId = $_GET['id'] ?? 0; // MODIFIED: Changed 'sale_id' to 'id' to match dashboard link
 
 if (!$saleId) {
     die('❌ Không tìm thấy hóa đơn');
@@ -25,12 +25,12 @@ if (!$sale) {
 
 // Get sale details
 $saleDetails = fetchAll("
-    SELECT sd.*, p.product_code as product_code, p.unit 
+    SELECT sd.*, p.product_code as product_code 
     FROM sale_details sd 
     LEFT JOIN products p ON sd.product_id = p.id 
     WHERE sd.sale_id = ? 
     ORDER BY sd.id
-", [$saleId]);
+", [$saleId]); // MODIFIED: Removed p.unit from SELECT
 
 // Format date helper
 function formatVietnameseDate($dateString) {

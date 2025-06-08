@@ -303,42 +303,56 @@ const revenueChart = new Chart(ctx, {
                     }
                 }
             }
-        },
-        elements: {
-            point: {
-                radius: 4,
-                hoverRadius: 6
-            }
         }
     }
 });
 
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
+// View sale detail (dummy function, replace with actual implementation)
+function viewSaleDetail(saleId) {
+    // This function should ideally open a modal with sale details
+    // For now, it can redirect to a detailed sale page or show an alert
+    // Example: window.location.href = `?page=sales&action=view&id=${saleId}`;
+    showToast(`Xem chi tiết hóa đơn #${saleId}`, 'info');
+    // Implement actual modal display or page redirect here
+    // You might need an AJAX call to fetch sale details first
+}
+
+// Print invoice
+function printInvoice(saleId) {
+    const printWindow = window.open(`print_invoice.php?id=${saleId}`, '_blank', 
+        'width=800,height=900,scrollbars=yes,resizable=yes'); // MODIFIED: sale_id to id
+    
+    if (!printWindow) {
+        showToast('Không thể mở cửa sổ in. Vui lòng cho phép popup.', 'error');
+    }
+}
+
+// Keyboard shortcuts for navigation
+document.addEventListener('keydown', function(event) {
     // Không xử lý nếu đang focus vào input
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
         return;
     }
     
-    switch(e.key) {
+    switch(event.key) {
         case 'F1':
-            e.preventDefault();
+            event.preventDefault();
             location.href = '?page=products';
             break;
         case 'F2':
-            e.preventDefault();
+            event.preventDefault();
             location.href = '?page=sales';
             break;
         case 'F3':
-            e.preventDefault();
+            event.preventDefault();
             location.href = '?page=imports';
             break;
         case 'F4':
-            e.preventDefault();
+            event.preventDefault();
             location.href = '?page=customers';
             break;
         case 'F5':
-            e.preventDefault();
+            event.preventDefault();
             location.reload();
             break;
     }
@@ -355,7 +369,7 @@ function viewSaleDetail(saleId) {
 }
 
 function printInvoice(saleId) {
-    window.open('print_invoice.php?sale_id=' + saleId, '_blank');
+    window.open('print_invoice.php?id=' + saleId, '_blank');
 }
 
 // Auto refresh dashboard every 5 minutes
