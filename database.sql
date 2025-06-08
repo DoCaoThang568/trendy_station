@@ -1,19 +1,32 @@
 -- ========================================
--- DATABASE: THE TRENDY STATION
--- File database chính - Import đầu tiên
+-- DATABASE: THE TRENDY STATION v2.0
+-- Fixed SQL file - No DELIMITER issues
 -- ========================================
 
-CREATE DATABASE IF NOT EXISTS trendy_station;
+CREATE DATABASE IF NOT EXISTS trendy_station CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE trendy_station;
 
--- Xóa bảng cũ nếu có (theo thứ tự dependency)
+-- Tắt foreign key checks để import clean
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Xóa tất cả bảng cũ nếu có
+DROP TABLE IF EXISTS return_details;
+DROP TABLE IF EXISTS returns;
+DROP TABLE IF EXISTS import_details;
+DROP TABLE IF EXISTS imports;
 DROP TABLE IF EXISTS sale_details;
 DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS customer_points;
+DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS suppliers;
+
+-- Bật lại foreign key checks
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- ========================================
--- BẢNG DANH MỤC SẢN PHẨM
+-- 1. BẢNG DANH MỤC SẢN PHẨM
 -- ========================================
 CREATE TABLE categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -24,19 +37,43 @@ CREATE TABLE categories (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Dữ liệu mẫu categories
 INSERT INTO categories (name, description) VALUES
-('Áo Thun', 'Các loại áo thun nam, nữ, unisex'),
-('Áo Sơ Mi', 'Áo sơ mi công sở, casual, formal'),
-('Quần Jean', 'Quần jean nam, nữ các kiểu dáng'),
-('Quần Tây', 'Quần tây công sở, dự tiệc'),
+('Áo Thun', 'Các loại áo thun nam, nữ, unisex thời trang'),
+('Áo Sơ Mi', 'Áo sơ mi công sở, casual, formal cao cấp'),
+('Quần Jean', 'Quần jean nam, nữ các kiểu dáng trendy'),
+('Quần Tây', 'Quần tây công sở, dự tiệc sang trọng'),
 ('Váy Đầm', 'Váy đầm dự tiệc, casual, công sở'),
 ('Áo Khoác', 'Áo khoác mùa đông, jacket, blazer'),
-('Phụ Kiện', 'Túi xách, giày dép, trang sức'),
-('Đồ Thể Thao', 'Quần áo thể thao, gym, yoga');
+('Phụ Kiện', 'Túi xách, giày dép, trang sức thời trang'),
+('Đồ Thể Thao', 'Quần áo thể thao, gym, yoga chất lượng cao');
 
 -- ========================================
--- BẢNG SẢN PHẨM  
+-- 2. BẢNG NHÀ CUNG CẤP
+-- ========================================
+CREATE TABLE suppliers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_code VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    contact_person VARCHAR(100),
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    address TEXT,
+    tax_code VARCHAR(20),
+    payment_terms VARCHAR(100) DEFAULT 'Thanh toán khi nhận hàng',
+    is_active BOOLEAN DEFAULT TRUE,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO suppliers (supplier_code, name, contact_person, phone, email, address, tax_code) VALUES
+('NCC001', 'Công ty TNHH Thời Trang Việt', 'Nguyễn Văn A', '0901234567', 'contact@thoitrangviet.com', '123 Nguyễn Huệ, Q1, HCM', '0123456789'),
+('NCC002', 'Fashion House Co.', 'Trần Thị B', '0987654321', 'sales@fashionhouse.vn', '456 Lê Lợi, Q1, HCM', '0987654321'),
+('NCC003', 'Nhà phân phối Luxury Brand', 'Lê Văn C', '0912345678', 'info@luxurybrand.vn', '789 Đồng Khởi, Q1, HCM', '0112233445'),
+('NCC004', 'Xưởng May Hồng Phát', 'Phạm Thị D', '0923456789', 'hongphat@gmail.com', '321 Cách Mạng Tháng 8, Q3, HCM', '0556677889');
+
+-- ========================================
+-- 3. BẢNG SẢN PHẨM
 -- ========================================
 CREATE TABLE products (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -48,195 +85,352 @@ CREATE TABLE products (
     selling_price DECIMAL(12,2) NOT NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
     min_stock_level INT DEFAULT 10,
+    max_stock_level INT DEFAULT 100,
     size VARCHAR(50),
     color VARCHAR(50),
+    material VARCHAR(100),
     brand VARCHAR(100),
+    season VARCHAR(20) DEFAULT 'All Season',
+    gender ENUM('Nam', 'Nữ', 'Unisex') DEFAULT 'Unisex',
+    is_active BOOLEAN DEFAULT TRUE,
     image_url VARCHAR(255),
+    barcode VARCHAR(100),
+    weight DECIMAL(8,2) DEFAULT 0,
+    supplier_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL,
+    
+    INDEX idx_product_code (product_code),
+    INDEX idx_category (category_id),
+    INDEX idx_stock (stock_quantity),
+    INDEX idx_active (is_active)
+);
+
+-- Sample products data
+INSERT INTO products (product_code, name, category_id, description, cost_price, selling_price, stock_quantity, size, color, material, brand, gender, supplier_id) VALUES
+('SP001', 'Áo Thun Basic Nam Cotton', 1, 'Áo thun nam chất liệu cotton 100% thoáng mát', 150000, 250000, 50, 'M,L,XL', 'Trắng,Đen,Xám', 'Cotton 100%', 'Trendy Station', 'Nam', 1),
+('SP002', 'Áo Sơ Mi Công Sở Nam', 2, 'Áo sơ mi nam formal cao cấp', 200000, 350000, 30, 'S,M,L,XL', 'Trắng,Xanh,Hồng', 'Cotton/Polyester', 'Executive', 'Nam', 2),
+('SP003', 'Quần Jean Skinny Nữ', 3, 'Quần jean nữ ôm dáng trendy', 250000, 450000, 25, '26,27,28,29,30', 'Xanh,Đen', 'Denim', 'Fashionista', 'Nữ', 1),
+('SP004', 'Váy Đầm Dự Tiệc', 5, 'Váy đầm dự tiệc sang trọng', 300000, 550000, 15, 'S,M,L', 'Đỏ,Đen,Navy', 'Silk/Polyester', 'Elegant', 'Nữ', 3),
+('SP005', 'Áo Khoác Hoodie Unisex', 6, 'Áo khoác hoodie phong cách street style', 180000, 320000, 40, 'M,L,XL,XXL', 'Đen,Xám,Navy', 'Cotton/Polyester', 'Street Style', 'Unisex', 1),
+('SP006', 'Quần Tây Công Sở Nam', 4, 'Quần tây nam formal chất lượng cao', 220000, 380000, 20, '29,30,31,32,33', 'Đen,Xám,Navy', 'Wool/Polyester', 'Professional', 'Nam', 2),
+('SP007', 'Túi Xách Nữ Cao Cấp', 7, 'Túi xách nữ da thật sang trọng', 400000, 700000, 12, 'One Size', 'Đen,Nâu,Beige', 'Da thật', 'Luxury', 'Nữ', 3),
+('SP008', 'Giày Sneaker Thể Thao', 8, 'Giày sneaker unisex năng động', 350000, 600000, 35, '36,37,38,39,40,41,42', 'Trắng,Đen,Xám', 'Synthetic/Mesh', 'SportMax', 'Unisex', 4);
+
+-- ========================================
+-- 4. BẢNG KHÁCH HÀNG
+-- ========================================
+CREATE TABLE customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_code VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) UNIQUE,
+    email VARCHAR(100),
+    address TEXT,
+    birth_date DATE,
+    gender ENUM('Nam', 'Nữ', 'Khác'),
+    membership_level ENUM('Thông thường', 'VIP', 'VVIP') DEFAULT 'Thông thường',
+    total_spent DECIMAL(15,2) DEFAULT 0,
+    total_orders INT DEFAULT 0,
+    loyalty_points INT DEFAULT 0,
+    notes TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(id)
+    
+    INDEX idx_phone (phone),
+    INDEX idx_membership (membership_level),
+    INDEX idx_active (is_active)
 );
 
--- Chỉ mục để tăng tốc tìm kiếm
-CREATE INDEX idx_products_code ON products(product_code);
-CREATE INDEX idx_products_name ON products(name);
-CREATE INDEX idx_products_category ON products(category_id);
-
--- Dữ liệu mẫu products
-INSERT INTO products (product_code, name, category_id, description, cost_price, selling_price, stock_quantity, min_stock_level, size, color, brand) VALUES
-('SP001', 'Áo Thun Basic Nam', 1, 'Áo thun cotton 100% thoáng mát', 80000, 150000, 50, 10, 'M,L,XL', 'Trắng', 'Local Brand'),
-('SP002', 'Áo Sơ Mi Công Sở Nam', 2, 'Áo sơ mi cotton premium', 150000, 280000, 30, 5, 'M,L,XL', 'Xanh Navy', 'Business Line'),
-('SP003', 'Quần Jean Skinny Nữ', 3, 'Quần jean co giãn, ôm dáng', 200000, 350000, 25, 5, 'S,M,L', 'Xanh Đậm', 'Denim Co'),
-('SP004', 'Váy Đầm Dự Tiệc', 5, 'Váy đầm lụa cao cấp', 300000, 550000, 15, 3, 'S,M,L', 'Đỏ', 'Elegant'),
-('SP005', 'Áo Khoác Blazer Nữ', 6, 'Blazer công sở sang trọng', 400000, 750000, 12, 3, 'S,M,L', 'Đen', 'Professional'),
-('SP006', 'Quần Tây Nam Slimfit', 4, 'Quần tây công sở cao cấp', 250000, 450000, 20, 5, 'M,L,XL', 'Xám', 'Formal Wear'),
-('SP007', 'Áo Thun Nữ Form Rộng', 1, 'Áo thun cotton oversized', 75000, 140000, 40, 8, 'S,M,L', 'Hồng', 'Casual Style'),
-('SP008', 'Túi Xách Da Nữ', 7, 'Túi xách da thật cao cấp', 500000, 980000, 8, 2, 'One Size', 'Nâu', 'Luxury Bags'),
-('SP009', 'Giày Sneaker Unisex', 7, 'Giày thể thao đa năng', 350000, 650000, 18, 5, '38,39,40,41,42', 'Trắng', 'Sport Life'),
-('SP010', 'Đầm Maxi Boho', 5, 'Đầm dài họa tiết boho', 180000, 320000, 22, 5, 'S,M,L', 'Họa tiết', 'Boho Chic');
+INSERT INTO customers (customer_code, name, phone, email, address, gender, membership_level, total_spent, total_orders, loyalty_points) VALUES
+('KH001', 'Nguyễn Văn An', '0901111111', 'an@email.com', '123 Nguyễn Trãi, Q1, HCM', 'Nam', 'VIP', 5200000, 12, 520),
+('KH002', 'Trần Thị Bình', '0902222222', 'binh@email.com', '456 Lê Văn Sỹ, Q3, HCM', 'Nữ', 'VVIP', 8500000, 18, 850),
+('KH003', 'Lê Hoàng Cường', '0903333333', 'cuong@email.com', '789 Cách Mạng Tháng 8, Q10, HCM', 'Nam', 'Thông thường', 1200000, 4, 120),
+('KH004', 'Phạm Thị Dung', '0904444444', 'dung@email.com', '321 Hoàng Văn Thụ, Tân Bình, HCM', 'Nữ', 'VIP', 3800000, 9, 380);
 
 -- ========================================
--- BẢNG BÁN HÀNG (HÓA ĐƠN)
+-- 5. BẢNG HÓA ĐƠN BÁN HÀNG
 -- ========================================
 CREATE TABLE sales (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    invoice_number VARCHAR(50) UNIQUE NOT NULL,
-    customer_name VARCHAR(100) NOT NULL,
-    customer_phone VARCHAR(15),
-    sale_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
+    sale_code VARCHAR(20) UNIQUE NOT NULL,
+    customer_id INT,
+    customer_name VARCHAR(100),
+    customer_phone VARCHAR(20),
+    total_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
     discount_percent DECIMAL(5,2) DEFAULT 0,
     discount_amount DECIMAL(12,2) DEFAULT 0,
-    total_amount DECIMAL(12,2) NOT NULL,
-    payment_method ENUM('Tiền mặt', 'Chuyển khoản', 'Thẻ') DEFAULT 'Tiền mặt',
-    payment_status ENUM('Đã thanh toán', 'Chưa thanh toán') DEFAULT 'Đã thanh toán',
+    final_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+    payment_method ENUM('Tiền mặt', 'Chuyển khoản', 'Thẻ tín dụng', 'Ví điện tử') DEFAULT 'Tiền mặt',
+    payment_status ENUM('Chờ thanh toán', 'Đã thanh toán', 'Hoàn tiền') DEFAULT 'Đã thanh toán',
     notes TEXT,
-    served_by VARCHAR(100) DEFAULT 'Admin',
+    cashier_name VARCHAR(100) DEFAULT 'Admin',
+    sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+    
+    INDEX idx_sale_code (sale_code),
+    INDEX idx_customer (customer_id),
+    INDEX idx_sale_date (sale_date),
+    INDEX idx_payment_status (payment_status)
 );
 
--- Chỉ mục
-CREATE INDEX idx_sales_invoice ON sales(invoice_number);
-CREATE INDEX idx_sales_customer ON sales(customer_phone);
-CREATE INDEX idx_sales_date ON sales(sale_date);
-
 -- ========================================
--- BẢNG CHI TIẾT BÁN HÀNG
+-- 6. CHI TIẾT HÓA ĐƠN BÁN HÀNG
 -- ========================================
 CREATE TABLE sale_details (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sale_id INT NOT NULL,
     product_id INT NOT NULL,
-    product_name VARCHAR(200) NOT NULL,
+    product_code VARCHAR(50),
+    product_name VARCHAR(200),
     quantity INT NOT NULL,
     unit_price DECIMAL(12,2) NOT NULL,
-    line_total DECIMAL(12,2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_price DECIMAL(12,2) NOT NULL,
+    discount_percent DECIMAL(5,2) DEFAULT 0,
+    discount_amount DECIMAL(12,2) DEFAULT 0,
+    final_price DECIMAL(12,2) NOT NULL,
+    
     FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(id)
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    
+    INDEX idx_sale (sale_id),
+    INDEX idx_product (product_id)
 );
 
 -- ========================================
--- VIEW: TỔNG QUAN BÁN HÀNG
+-- 7. BẢNG PHIẾU NHẬP HÀNG
 -- ========================================
-CREATE OR REPLACE VIEW sales_overview AS
+CREATE TABLE imports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    import_code VARCHAR(20) UNIQUE NOT NULL,
+    supplier_id INT,
+    supplier_name VARCHAR(200),
+    total_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+    notes TEXT,
+    import_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) DEFAULT 'Admin',
+    status ENUM('Đang xử lý', 'Hoàn thành', 'Đã hủy') DEFAULT 'Hoàn thành',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL,
+    
+    INDEX idx_import_code (import_code),
+    INDEX idx_supplier (supplier_id),
+    INDEX idx_import_date (import_date)
+);
+
+-- ========================================
+-- 8. CHI TIẾT PHIẾU NHẬP HÀNG
+-- ========================================
+CREATE TABLE import_details (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    import_id INT NOT NULL,
+    product_id INT NOT NULL,
+    product_code VARCHAR(50),
+    product_name VARCHAR(200),
+    quantity INT NOT NULL,
+    unit_cost DECIMAL(12,2) NOT NULL,
+    total_cost DECIMAL(12,2) NOT NULL,
+    expiry_date DATE,
+    batch_number VARCHAR(50),
+    
+    FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    
+    INDEX idx_import (import_id),
+    INDEX idx_product (product_id)
+);
+
+-- ========================================
+-- 9. BẢNG TRẢ HÀNG
+-- ========================================
+CREATE TABLE returns (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    return_code VARCHAR(20) UNIQUE NOT NULL,
+    sale_id INT,
+    customer_id INT,
+    customer_name VARCHAR(100),
+    reason ENUM('Lỗi sản phẩm', 'Không vừa size', 'Không đúng mô tả', 'Khách đổi ý', 'Khác') NOT NULL,
+    total_refund DECIMAL(12,2) NOT NULL DEFAULT 0,
+    refund_method ENUM('Tiền mặt', 'Chuyển khoản', 'Thẻ tín dụng', 'Hoàn điểm') DEFAULT 'Tiền mặt',
+    status ENUM('Chờ xử lý', 'Đã duyệt', 'Đã hoàn tiền', 'Từ chối') DEFAULT 'Đã duyệt',
+    notes TEXT,
+    return_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_by VARCHAR(100) DEFAULT 'Admin',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE SET NULL,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+    
+    INDEX idx_return_code (return_code),
+    INDEX idx_sale (sale_id),
+    INDEX idx_return_date (return_date)
+);
+
+-- ========================================
+-- 10. CHI TIẾT TRẢ HÀNG
+-- ========================================
+CREATE TABLE return_details (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    return_id INT NOT NULL,
+    product_id INT NOT NULL,
+    product_code VARCHAR(50),
+    product_name VARCHAR(200),
+    quantity INT NOT NULL,
+    unit_price DECIMAL(12,2) NOT NULL,
+    total_refund DECIMAL(12,2) NOT NULL,
+    condition_status ENUM('Mới', 'Đã sử dụng', 'Lỗi') DEFAULT 'Mới',
+    
+    FOREIGN KEY (return_id) REFERENCES returns(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    
+    INDEX idx_return (return_id),
+    INDEX idx_product (product_id)
+);
+
+-- ========================================
+-- 11. BẢNG ĐIỂM THƯỞNG KHÁCH HÀNG
+-- ========================================
+CREATE TABLE customer_points (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    transaction_type ENUM('Earn', 'Redeem', 'Expire', 'Adjust') NOT NULL,
+    points INT NOT NULL,
+    description VARCHAR(255),
+    reference_id INT,
+    reference_type ENUM('Sale', 'Return', 'Manual') DEFAULT 'Sale',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    
+    INDEX idx_customer (customer_id),
+    INDEX idx_transaction_type (transaction_type),
+    INDEX idx_created_at (created_at)
+);
+
+-- ========================================
+-- VIEWS FOR REPORTING
+-- ========================================
+
+-- View: Thống kê sản phẩm
+CREATE VIEW product_stats AS
+SELECT 
+    p.id,
+    p.product_code,
+    p.name,
+    c.name as category_name,
+    p.stock_quantity,
+    p.selling_price,
+    p.cost_price,
+    (p.selling_price - p.cost_price) as profit_per_unit,
+    CASE 
+        WHEN p.stock_quantity <= p.min_stock_level THEN 'Low Stock'
+        WHEN p.stock_quantity <= (p.min_stock_level * 1.5) THEN 'Medium Stock'
+        ELSE 'Good Stock'
+    END as stock_status,
+    p.is_active
+FROM products p
+LEFT JOIN categories c ON p.category_id = c.id;
+
+-- View: Thống kê khách hàng
+CREATE VIEW customer_stats AS
+SELECT 
+    c.id,
+    c.customer_code,
+    c.name,
+    c.phone,
+    c.membership_level,
+    c.total_spent,
+    c.total_orders,
+    c.loyalty_points,
+    CASE 
+        WHEN c.total_spent >= 10000000 THEN 'VVIP'
+        WHEN c.total_spent >= 5000000 THEN 'VIP'
+        ELSE 'Thông thường'
+    END as suggested_level,
+    c.is_active
+FROM customers c;
+
+-- View: Báo cáo bán hàng
+CREATE VIEW sales_report AS
 SELECT 
     s.id,
-    s.invoice_number,
+    s.sale_code,
     s.customer_name,
-    s.customer_phone,
-    s.sale_date,
     s.total_amount,
+    s.final_amount,
     s.payment_method,
     s.payment_status,
+    s.sale_date,
     COUNT(sd.id) as total_items,
     SUM(sd.quantity) as total_quantity
 FROM sales s
 LEFT JOIN sale_details sd ON s.id = sd.sale_id
-GROUP BY s.id
-ORDER BY s.sale_date DESC;
+GROUP BY s.id;
 
 -- ========================================
--- VIEW: SẢN PHẨM VỚI THÔNG TIN CATEGORY
+-- SAMPLE DATA
 -- ========================================
-CREATE OR REPLACE VIEW products_with_category AS
-SELECT 
-    p.*,
-    c.name as category_name,
-    CASE 
-        WHEN p.stock_quantity <= 0 THEN 'Hết hàng'
-        WHEN p.stock_quantity <= p.min_stock_level THEN 'Sắp hết'
-        ELSE 'Còn hàng'
-    END as stock_status
-FROM products p
-LEFT JOIN categories c ON p.category_id = c.id
-WHERE p.is_active = TRUE;
+
+-- Sample Sales
+INSERT INTO sales (sale_code, customer_id, customer_name, customer_phone, total_amount, final_amount, payment_method) VALUES
+('HD001', 1, 'Nguyễn Văn An', '0901111111', 700000, 700000, 'Tiền mặt'),
+('HD002', 2, 'Trần Thị Bình', '0902222222', 950000, 950000, 'Chuyển khoản'),
+('HD003', 3, 'Lê Hoàng Cường', '0903333333', 600000, 600000, 'Tiền mặt');
+
+-- Sample Sale Details
+INSERT INTO sale_details (sale_id, product_id, product_code, product_name, quantity, unit_price, total_price, final_price) VALUES
+(1, 1, 'SP001', 'Áo Thun Basic Nam Cotton', 2, 250000, 500000, 500000),
+(1, 5, 'SP005', 'Áo Khoác Hoodie Unisex', 1, 320000, 320000, 320000),
+(2, 4, 'SP004', 'Váy Đầm Dự Tiệc', 1, 550000, 550000, 550000),
+(2, 7, 'SP007', 'Túi Xách Nữ Cao Cấp', 1, 700000, 700000, 700000),
+(3, 3, 'SP003', 'Quần Jean Skinny Nữ', 1, 450000, 450000, 450000),
+(3, 8, 'SP008', 'Giày Sneaker Thể Thao', 1, 600000, 600000, 600000);
+
+-- Sample Imports
+INSERT INTO imports (import_code, supplier_id, supplier_name, total_amount, notes) VALUES
+('PN001', 1, 'Công ty TNHH Thời Trang Việt', 5000000, 'Nhập hàng tháng 6/2025'),
+('PN002', 2, 'Fashion House Co.', 3500000, 'Nhập hàng summer collection');
+
+-- Sample Import Details
+INSERT INTO import_details (import_id, product_id, product_code, product_name, quantity, unit_cost, total_cost) VALUES
+(1, 1, 'SP001', 'Áo Thun Basic Nam Cotton', 50, 150000, 7500000),
+(1, 2, 'SP002', 'Áo Sơ Mi Công Sở Nam', 30, 200000, 6000000),
+(2, 3, 'SP003', 'Quần Jean Skinny Nữ', 25, 250000, 6250000),
+(2, 4, 'SP004', 'Váy Đầm Dự Tiệc', 15, 300000, 4500000);
+
+-- Update product stock after import
+UPDATE products SET stock_quantity = stock_quantity + 50 WHERE id = 1;
+UPDATE products SET stock_quantity = stock_quantity + 30 WHERE id = 2;
+UPDATE products SET stock_quantity = stock_quantity + 25 WHERE id = 3;
+UPDATE products SET stock_quantity = stock_quantity + 15 WHERE id = 4;
+
+-- Update customer totals
+UPDATE customers SET 
+    total_spent = (SELECT COALESCE(SUM(final_amount), 0) FROM sales WHERE customer_id = customers.id),
+    total_orders = (SELECT COUNT(*) FROM sales WHERE customer_id = customers.id);
+
+-- Sample Customer Points
+INSERT INTO customer_points (customer_id, transaction_type, points, description, reference_id, reference_type) VALUES
+(1, 'Earn', 70, 'Điểm từ hóa đơn HD001', 1, 'Sale'),
+(2, 'Earn', 95, 'Điểm từ hóa đơn HD002', 2, 'Sale'),
+(3, 'Earn', 60, 'Điểm từ hóa đơn HD003', 3, 'Sale');
 
 -- ========================================
--- TRIGGER: TỰ ĐỘNG TẠO MÃ SẢN PHẨM
+-- INDEXES FOR PERFORMANCE
 -- ========================================
-DELIMITER //
-CREATE TRIGGER auto_product_code
-    BEFORE INSERT ON products
-    FOR EACH ROW
-BEGIN
-    IF NEW.product_code IS NULL OR NEW.product_code = '' THEN
-        SET NEW.product_code = CONCAT('SP', LPAD((SELECT COALESCE(MAX(CAST(SUBSTRING(product_code, 3) AS UNSIGNED)), 0) + 1 FROM products), 3, '0'));
-    END IF;
-END//
-DELIMITER ;
+CREATE INDEX idx_products_name ON products(name);
+CREATE INDEX idx_products_barcode ON products(barcode);
+CREATE INDEX idx_sales_date_range ON sales(sale_date, payment_status);
+CREATE INDEX idx_imports_date_range ON imports(import_date, status);
+CREATE INDEX idx_customers_phone_email ON customers(phone, email);
 
 -- ========================================
--- TRIGGER: TỰ ĐỘNG TẠO SỐ HÓA ĐƠN
+-- COMPLETED SUCCESSFULLY
 -- ========================================
-DELIMITER //
-CREATE TRIGGER auto_invoice_number
-    BEFORE INSERT ON sales
-    FOR EACH ROW
-BEGIN
-    IF NEW.invoice_number IS NULL OR NEW.invoice_number = '' THEN
-        SET NEW.invoice_number = CONCAT('HD', DATE_FORMAT(NOW(), '%Y%m%d'), LPAD((SELECT COUNT(*) + 1 FROM sales WHERE DATE(sale_date) = CURDATE()), 3, '0'));
-    END IF;
-END//
-DELIMITER ;
-
--- ========================================
--- TRIGGER: CẬP NHẬT TỒN KHO KHI BÁN
--- ========================================
-DELIMITER //
-CREATE TRIGGER update_stock_after_sale
-    AFTER INSERT ON sale_details
-    FOR EACH ROW
-BEGIN
-    UPDATE products 
-    SET stock_quantity = stock_quantity - NEW.quantity,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = NEW.product_id;
-END//
-DELIMITER ;
-
--- ========================================
--- DỊCH MẪU BÁN HÀNG
--- ========================================
-INSERT INTO sales (customer_name, customer_phone, subtotal, discount_percent, discount_amount, total_amount, payment_method, notes) VALUES
-('Nguyễn Văn An', '0901234567', 430000, 5, 21500, 408500, 'Tiền mặt', 'Khách hàng VIP'),
-('Trần Thị Bình', '0912345678', 750000, 10, 75000, 675000, 'Chuyển khoản', 'Mua nhiều, giảm giá'),
-('Lê Minh Cường', '0923456789', 150000, 0, 0, 150000, 'Tiền mặt', ''),
-('Phạm Thu Dung', '0934567890', 900000, 8, 72000, 828000, 'Thẻ', 'Khách hàng thân thiết');
-
--- Chi tiết hóa đơn mẫu
-INSERT INTO sale_details (sale_id, product_id, product_name, quantity, unit_price, line_total) VALUES
--- Hóa đơn 1
-(1, 1, 'Áo Thun Basic Nam', 2, 150000, 300000),
-(1, 7, 'Áo Thun Nữ Form Rộng', 1, 140000, 140000),
--- Hóa đơn 2  
-(2, 4, 'Váy Đầm Dự Tiệc', 1, 550000, 550000),
-(2, 8, 'Túi Xách Da Nữ', 1, 200000, 200000),
--- Hóa đơn 3
-(3, 1, 'Áo Thun Basic Nam', 1, 150000, 150000),
--- Hóa đơn 4
-(4, 5, 'Áo Khoác Blazer Nữ', 1, 750000, 750000),
-(4, 6, 'Quần Tây Nam Slimfit', 1, 150000, 150000);
-
--- ========================================
--- HIỂN thị kết quả
--- ========================================
-SELECT 'Database created successfully!' as message;
-SELECT COUNT(*) as total_categories FROM categories;
-SELECT COUNT(*) as total_products FROM products;
-SELECT COUNT(*) as total_sales FROM sales;
-
--- Hiển thị tình trạng tồn kho
-SELECT 
-    product_code,
-    name,
-    stock_quantity,
-    CASE 
-        WHEN stock_quantity <= 0 THEN 'Hết hàng' 
-        WHEN stock_quantity <= min_stock_level THEN 'Sắp hết'
-        ELSE 'Còn hàng'
-    END as status
-FROM products 
-ORDER BY stock_quantity ASC;

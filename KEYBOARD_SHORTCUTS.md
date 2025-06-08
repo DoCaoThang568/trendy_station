@@ -155,7 +155,17 @@
 
 ---
 
-## 📞 HỖ TRỢ & GỢI Ý:
+### 💡 **Tips khắc phục:**
+
+1. **Thử phím tắt khác:** Ctrl+Alt+1,2,3... (nếu được code)
+2. **Dùng F1 xem help:** Luôn hiển thị danh sách phím tắt
+3. **Practice với mouse:** Để familiar với vị trí menu
+4. **Fullscreen mode:** F11 để tránh xung đột browser
+5. **Clear cache:** Ctrl+Shift+Delete → Clear all
+
+---
+
+## �📞 HỖ TRỢ & GỢI Ý:
 
 ### 💡 **Tips sử dụng hiệu quả:**
 1. Sử dụng phím tắt thay vì click chuột

@@ -7,6 +7,267 @@
 let currentPage = 'products';
 
 /**
+ * Navigation keyboard shortcuts
+ * Fixed for browser compatibility
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // Ensure DOM is loaded before attaching events
+    console.log('Trendy Station keyboard shortcuts loaded');
+});
+
+document.addEventListener('keydown', function(e) {
+    // Debug logging
+    if (e.altKey) {
+        console.log('Alt key detected with:', e.key, e.code, e.keyCode);
+    }
+    
+    // Check if Alt key is pressed (avoid conflicts with browser shortcuts)
+    if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+        let handled = false;
+        
+        switch(e.key) {
+            case '1':
+            case 'Digit1':
+                e.preventDefault();
+                e.stopPropagation();
+                navigateToPage('dashboard');
+                showToast('Chuyển trang Tổng quan (Alt+1)', 'info');
+                handled = true;
+                break;
+            case '2':
+            case 'Digit2':
+                e.preventDefault();
+                e.stopPropagation();
+                navigateToPage('products');
+                showToast('Chuyển trang Sản phẩm (Alt+2)', 'info');
+                handled = true;
+                break;
+            case '3':
+            case 'Digit3':
+                e.preventDefault();
+                e.stopPropagation();
+                navigateToPage('sales');
+                showToast('Chuyển trang Bán hàng (Alt+3)', 'info');
+                handled = true;
+                break;
+            case '4':
+            case 'Digit4':
+                e.preventDefault();
+                e.stopPropagation();
+                navigateToPage('imports');
+                showToast('Chuyển trang Nhập hàng (Alt+4)', 'info');
+                handled = true;
+                break;
+            case '5':
+            case 'Digit5':
+                e.preventDefault();
+                e.stopPropagation();
+                navigateToPage('customers');
+                showToast('Chuyển trang Khách hàng (Alt+5)', 'info');
+                handled = true;
+                break;
+            case '6':
+            case 'Digit6':
+                e.preventDefault();
+                e.stopPropagation();
+                navigateToPage('returns');
+                showToast('Chuyển trang Trả hàng (Alt+6)', 'info');
+                handled = true;
+                break;
+            case '7':
+            case 'Digit7':
+                e.preventDefault();
+                e.stopPropagation();
+                navigateToPage('reports');
+                showToast('Chuyển trang Báo cáo (Alt+7)', 'info');
+                handled = true;
+                break;
+            case 'h':
+            case 'H':
+                e.preventDefault();
+                e.stopPropagation();
+                showKeyboardShortcuts();
+                handled = true;
+                break;
+        }
+        
+        // Alternative check using keyCode for older browsers
+        if (!handled && e.keyCode >= 49 && e.keyCode <= 55) {
+            e.preventDefault();
+            e.stopPropagation();
+            const pageMap = {
+                49: 'dashboard',   // Alt+1
+                50: 'products',    // Alt+2
+                51: 'sales',       // Alt+3
+                52: 'imports',     // Alt+4
+                53: 'customers',   // Alt+5
+                54: 'returns',     // Alt+6
+                55: 'reports'      // Alt+7
+            };
+            
+            const pageNames = {
+                'dashboard': 'Tổng quan',
+                'products': 'Sản phẩm',
+                'sales': 'Bán hàng',
+                'imports': 'Nhập hàng',
+                'customers': 'Khách hàng',
+                'returns': 'Trả hàng',
+                'reports': 'Báo cáo'
+            };
+            
+            const page = pageMap[e.keyCode];
+            if (page) {
+                navigateToPage(page);
+                showToast(`Chuyển trang ${pageNames[page]} (Alt+${e.keyCode - 48})`, 'info');
+            }
+        }
+    }
+    
+    // Other global shortcuts
+    switch(e.key) {
+        case 'Escape':
+            // Close all modals
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (modal.style.display === 'block') {
+                    closeModal(modal.id);
+                }
+            });
+            break;
+        case 'F1':
+            e.preventDefault();
+            showKeyboardShortcuts();
+            break;
+    }
+});
+
+/**
+ * Navigate to page
+ * @param {string} page - Page to navigate to
+ */
+function navigateToPage(page) {
+    console.log('Navigating to page:', page);
+    window.location.href = `index.php?page=${page}`;
+}
+
+/**
+ * Show keyboard shortcuts help
+ */
+function showKeyboardShortcuts() {
+    const content = `
+        <div style="font-family: monospace; line-height: 1.8;">
+            <h4>🚀 Phím tắt Navigation</h4>
+            <div style="margin-bottom: 1rem;">
+                <strong>Alt + 1:</strong> Tổng quan<br>
+                <strong>Alt + 2:</strong> Sản phẩm<br>
+                <strong>Alt + 3:</strong> Bán hàng<br>
+                <strong>Alt + 4:</strong> Nhập hàng<br>
+                <strong>Alt + 5:</strong> Khách hàng<br>
+                <strong>Alt + 6:</strong> Trả hàng<br>
+                <strong>Alt + 7:</strong> Báo cáo<br>
+            </div>
+            
+            <h4>⚡ Phím tắt chung</h4>
+            <div style="margin-bottom: 1rem;">
+                <strong>F1 / Alt + H:</strong> Hiển thị trợ giúp<br>
+                <strong>Escape:</strong> Đóng modal<br>
+                <strong>Ctrl + S:</strong> Lưu (trang hiện tại)<br>
+                <strong>Ctrl + N:</strong> Thêm mới (trang hiện tại)<br>
+            </div>
+            
+            <h4>🛒 Phím tắt Bán hàng</h4>
+            <div style="margin-bottom: 1rem;">
+                <strong>F2:</strong> Thêm sản phẩm<br>
+                <strong>F3:</strong> Thêm khách hàng<br>
+                <strong>F4:</strong> Thanh toán<br>
+                <strong>F5:</strong> In hóa đơn<br>
+                <strong>Ctrl + D:</strong> Xóa draft<br>
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                <small style="color: #666;">Nhấn <strong>Escape</strong> để đóng</small>
+            </div>
+        </div>
+    `;
+    
+    createModal('🎯 Hướng dẫn phím tắt', content);
+}
+
+/**
+ * Test keyboard shortcuts functionality
+ */
+function testKeyboardShortcuts() {
+    showToast('🧪 Testing phím tắt navigation...', 'info');
+    console.log('Keyboard shortcuts test initiated');
+    
+    // Test each navigation
+    const pages = ['dashboard', 'products', 'sales', 'imports', 'customers', 'returns', 'reports'];
+    let currentTest = 0;
+    
+    function runNextTest() {
+        if (currentTest < pages.length) {
+            const page = pages[currentTest];
+            console.log(`Testing navigation to: ${page}`);
+            showToast(`✅ Test ${currentTest + 1}: ${page}`, 'success');
+            currentTest++;
+            setTimeout(runNextTest, 1000);
+        } else {
+            showToast('🎉 All keyboard shortcut tests completed!', 'success');
+        }
+    }
+    
+    runNextTest();
+}
+
+/**
+ * Add keyboard shortcut indicators to navigation
+ */
+function addKeyboardIndicators() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const shortcuts = ['Alt+1', 'Alt+2', 'Alt+3', 'Alt+4', 'Alt+5', 'Alt+6', 'Alt+7'];
+    
+    navItems.forEach((item, index) => {
+        if (index < shortcuts.length) {
+            // Add shortcut indicator
+            const indicator = document.createElement('span');
+            indicator.textContent = shortcuts[index];
+            indicator.style.cssText = `
+                font-size: 0.75rem;
+                opacity: 0.7;
+                margin-left: 0.5rem;
+                color: var(--accent-color);
+                font-weight: 500;
+            `;
+            item.appendChild(indicator);
+        }
+    });
+}
+
+// Add indicators when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(addKeyboardIndicators, 100);
+    
+    // Add test button to footer for debugging
+    const footer = document.querySelector('.footer');
+    if (footer) {
+        const testBtn = document.createElement('button');
+        testBtn.textContent = '🧪 Test Phím tắt';
+        testBtn.onclick = testKeyboardShortcuts;
+        testBtn.style.cssText = `
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            margin: 1rem;
+            font-size: 0.9rem;
+        `;
+        footer.appendChild(testBtn);
+    }
+});
+
+/**
  * Show toast notification
  * @param {string} message - Message to display
  * @param {string} type - Type: success, error, warning

@@ -284,4 +284,59 @@ window.onclick = function(event) {
         closeModal('productModal');
     }
 }
+
+// Keyboard shortcuts for Products page
+document.addEventListener('keydown', function(e) {
+    // Skip if typing in input fields (except specific shortcuts)
+    const isInputElement = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
+    
+    // F-key shortcuts work regardless of focus
+    if (e.key === 'F2') {
+        e.preventDefault();
+        openProductModal();
+        showToast('Mở form thêm sản phẩm (F2)', 'info');
+        return;
+    }
+    
+    if (e.key === 'F3') {
+        e.preventDefault();
+        document.getElementById('productSearch').focus();
+        showToast('Focus vào tìm kiếm sản phẩm (F3)', 'info');
+        return;
+    }
+    
+    // Escape to close modal
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('productModal');
+        if (modal && modal.style.display === 'block') {
+            closeModal('productModal');
+            showToast('Đóng modal (Esc)', 'info');
+        }
+        return;
+    }
+    
+    // Ctrl/Cmd combinations
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 'n':
+                e.preventDefault();
+                openProductModal();
+                showToast('Thêm sản phẩm mới (Ctrl+N)', 'info');
+                break;
+            case 'f':
+                e.preventDefault();
+                document.getElementById('productSearch').focus();
+                showToast('Tìm kiếm sản phẩm (Ctrl+F)', 'info');
+                break;
+            case 's':
+                e.preventDefault();
+                const form = document.getElementById('productForm');
+                if (form && document.getElementById('productModal').style.display === 'block') {
+                    form.dispatchEvent(new Event('submit'));
+                    showToast('Lưu sản phẩm (Ctrl+S)', 'info');
+                }
+                break;
+        }
+    }
+});
 </script>

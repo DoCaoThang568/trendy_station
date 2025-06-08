@@ -591,6 +591,62 @@ textarea {
     max-width: 400px;
 }
 
+/* Toast Notification Styles */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius-small);
+    color: white;
+    font-weight: 500;
+    font-size: 0.9rem;
+    box-shadow: var(--shadow-medium);
+    transform: translateX(400px);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 10000;
+    max-width: 350px;
+    word-wrap: break-word;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-success {
+    background: var(--success-gradient);
+}
+
+.toast-error {
+    background: var(--danger-gradient);
+}
+
+.toast-warning {
+    background: var(--warning-gradient);
+}
+
+.toast-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.toast::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: inherit;
+    border-radius: inherit;
+    filter: blur(10px);
+    opacity: 0.6;
+    z-index: -1;
+}
+
 /* Responsive Modal */
 @media (max-width: 768px) {
     .modal-content {

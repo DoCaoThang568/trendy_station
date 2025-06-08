@@ -693,31 +693,77 @@ document.getElementById('productSearch').addEventListener('keydown', function(e)
 
 // Keyboard shortcuts
 document.addEventListener('keydown', function(e) {
-    // Ctrl/Cmd + Enter to submit form
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    // Skip if typing in input fields (except specific shortcuts)
+    const isInputElement = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
+    
+    // F-key shortcuts work regardless of focus
+    if (e.key === 'F2') {
+        e.preventDefault();
+        document.getElementById('productSearch').focus();
+        showToast('Focus vào tìm kiếm sản phẩm (F2)', 'info');
+        return;
+    }
+    
+    if (e.key === 'F3') {
+        e.preventDefault();
+        document.getElementById('customer_name').focus();
+        showToast('Focus vào tên khách hàng (F3)', 'info');
+        return;
+    }
+    
+    if (e.key === 'F4') {
         e.preventDefault();
         const submitBtn = document.getElementById('submitBtn');
         if (!submitBtn.disabled) {
             submitBtn.click();
+            showToast('Thực hiện thanh toán (F4)', 'info');
         }
+        return;
     }
     
-    // Ctrl/Cmd + R to reset form
-    if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+    if (e.key === 'F5') {
         e.preventDefault();
-        resetForm();
+        // Print last invoice if available
+        if (window.lastInvoiceId) {
+            window.open(`print_invoice.php?id=${window.lastInvoiceId}`, '_blank');
+            showToast('In hóa đơn cuối (F5)', 'info');
+        } else {
+            showToast('Chưa có hóa đơn để in', 'warning');
+        }
+        return;
     }
     
-    // F2 to focus on product search
-    if (e.key === 'F2') {
-        e.preventDefault();
-        document.getElementById('productSearch').focus();
-    }
-    
-    // F3 to add new item row
-    if (e.key === 'F3') {
-        e.preventDefault();
-        addItemRow();
+    // Ctrl/Cmd combinations
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 'Enter':
+                e.preventDefault();
+                const submitBtn = document.getElementById('submitBtn');
+                if (!submitBtn.disabled) {
+                    submitBtn.click();
+                }
+                break;
+            case 'r':
+                e.preventDefault();
+                resetForm();
+                showToast('Đặt lại form (Ctrl+R)', 'info');
+                break;
+            case 's':
+                e.preventDefault();
+                saveDraft();
+                showToast('Đã lưu bản nháp (Ctrl+S)', 'success');
+                break;
+            case 'n':
+                e.preventDefault();
+                addItemRow();
+                showToast('Thêm dòng sản phẩm (Ctrl+N)', 'info');
+                break;
+            case 'd':
+                e.preventDefault();
+                clearDraft();
+                showToast('Đã xóa bản nháp (Ctrl+D)', 'info');
+                break;
+        }
     }
 });
 

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Keyboard Shortcuts - Trendy Station</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 1rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+        
+        .test-area {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .shortcuts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .shortcut {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .shortcut:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .shortcut.tested {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+        }
+        
+        .log {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: 'Courier New', monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 1rem 0;
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem;
+            transition: transform 0.2s;
+        }
+        
+        .button:hover {
+            transform: scale(1.05);
+        }
+        
+        .status {
+            text-align: center;
+            font-size: 1.2rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .success { color: #00ff88; }
+        .error { color: #ff6b6b; }
+        .info { color: #74b9ff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Keyboard Shortcuts</h1>
+        <div class="status" id="status">
+            Nhấn các phím tắt dưới đây để test...
+        </div>
+        
+        <div class="test-area">
+            <h3>📝 Instructions:</h3>
+            <p>1. Nhấn các phím tắt Alt+1, Alt+2, Alt+3, etc.</p>
+            <p>2. Xem log để kiểm tra event được detect</p>
+            <p>3. Shortcut sẽ highlight màu xanh khi hoạt động</p>
+            <p>4. Nếu không hoạt động, xem troubleshooting tips</p>
+        </div>
+        
+        <div class="shortcuts">
+            <div class="shortcut" data-key="1">
+                <strong>Alt + 1</strong><br>
+                Dashboard
+            </div>
+            <div class="shortcut" data-key="2">
+                <strong>Alt + 2</strong><br>
+                Products
+            </div>
+            <div class="shortcut" data-key="3">
+                <strong>Alt + 3</strong><br>
+                Sales
+            </div>
+            <div class="shortcut" data-key="4">
+                <strong>Alt + 4</strong><br>
+                Imports
+            </div>
+            <div class="shortcut" data-key="5">
+                <strong>Alt + 5</strong><br>
+                Customers
+            </div>
+            <div class="shortcut" data-key="6">
+                <strong>Alt + 6</strong><br>
+                Returns
+            </div>
+            <div class="shortcut" data-key="7">
+                <strong>Alt + 7</strong><br>
+                Reports
+            </div>
+        </div>
+        
+        <div class="log" id="log">
+            <div class="info">[INFO] Test environment loaded</div>
+            <div class="info">[INFO] Press Alt+1 through Alt+7 to test shortcuts</div>
+        </div>
+        
+        <div style="text-align: center;">
+            <button class="button" onclick="clearLog()">🗑️ Clear Log</button>
+            <button class="button" onclick="testAllShortcuts()">🚀 Auto Test All</button>
+            <button class="button" onclick="goToMainSystem()">🏠 Go to Main System</button>
+        </div>
+        
+        <div class="test-area">
+            <h3>🔧 Troubleshooting:</h3>
+            <ul>
+                <li><strong>Không detect Alt key:</strong> Browser conflicts, thử F11 fullscreen</li>
+                <li><strong>Console errors:</strong> Mở F12 Developer Tools</li>
+                <li><strong>Script blocked:</strong> Tắt AdBlock, enable JavaScript</li>
+                <li><strong>Mobile:</strong> Keyboard shortcuts không hoạt động trên mobile</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let testCount = 0;
+        const pages = {
+            '1': 'dashboard',
+            '2': 'products', 
+            '3': 'sales',
+            '4': 'imports',
+            '5': 'customers',
+            '6': 'returns',
+            '7': 'reports'
+        };
+        
+        const pageNames = {
+            'dashboard': 'Dashboard',
+            'products': 'Products',
+            'sales': 'Sales', 
+            'imports': 'Imports',
+            'customers': 'Customers',
+            'returns': 'Returns',
+            'reports': 'Reports'
+        };
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = `[${timestamp}] ${message}`;
+            logDiv.appendChild(div);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.innerHTML = message;
+            status.className = `status ${type}`;
+        }
+        
+        function markShortcutTested(key) {
+            const shortcut = document.querySelector(`[data-key="${key}"]`);
+            if (shortcut) {
+                shortcut.classList.add('tested');
+                setTimeout(() => {
+                    shortcut.classList.remove('tested');
+                }, 3000);
+            }
+        }
+        
+        // Main keyboard event listener
+        document.addEventListener('keydown', function(e) {
+            log(`Key pressed: ${e.key}, Alt: ${e.altKey}, Ctrl: ${e.ctrlKey}, Code: ${e.code}`);
+            
+            if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+                if (pages[e.key]) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const page = pages[e.key];
+                    const pageName = pageNames[page];
+                    
+                    log(`✅ SHORTCUT DETECTED: Alt+${e.key} → ${pageName}`, 'success');
+                    updateStatus(`🎉 Alt+${e.key} shortcut working! → ${pageName}`, 'success');
+                    markShortcutTested(e.key);
+                    testCount++;
+                    
+                    // Simulate navigation (don't actually navigate in test)
+                    setTimeout(() => {
+                        log(`📍 Would navigate to: index.php?page=${page}`, 'info');
+                    }, 500);
+                    
+                } else {
+                    log(`⚠️ Alt+${e.key} not mapped to any page`, 'error');
+                }
+            }
+            
+            // Test other common shortcuts
+            if (e.key === 'F1') {
+                e.preventDefault();
+                log('✅ F1 (Help) detected', 'success');
+                updateStatus('F1 Help shortcut working!', 'success');
+            }
+            
+            if (e.key === 'Escape') {
+                log('✅ Escape detected', 'success');
+                updateStatus('Escape key working!', 'success');
+            }
+        });
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('Log cleared', 'info');
+            updateStatus('Log cleared - Ready for testing', 'info');
+        }
+        
+        function testAllShortcuts() {
+            log('🚀 Starting auto-test sequence...', 'info');
+            updateStatus('🧪 Running auto-test...', 'info');
+            
+            let currentTest = 1;
+            const testInterval = setInterval(() => {
+                if (currentTest <= 7) {
+                    // Simulate Alt+number key press
+                    const event = new KeyboardEvent('keydown', {
+                        key: currentTest.toString(),
+                        altKey: true,
+                        bubbles: true
+                    });
+                    
+                    document.dispatchEvent(event);
+                    currentTest++;
+                } else {
+                    clearInterval(testInterval);
+                    log(`🎉 Auto-test completed! ${testCount} shortcuts tested`, 'success');
+                    updateStatus(`✅ Auto-test done! ${testCount} shortcuts working`, 'success');
+                }
+            }, 1000);
+        }
+        
+        function goToMainSystem() {
+            if (confirm('Go to main Trendy Station system?')) {
+                window.location.href = 'index.php';
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🎯 Keyboard shortcut test environment ready', 'success');
+            updateStatus('Ready! Press Alt+1 through Alt+7 to test shortcuts', 'info');
+            
+            // Show browser info
+            log(`🌐 Browser: ${navigator.userAgent}`, 'info');
+            log(`📱 Platform: ${navigator.platform}`, 'info');
+        });
+        
+        // Warn about page unload
+        window.addEventListener('beforeunload', function(e) {
+            if (testCount > 0) {
+                const message = 'You have tested shortcuts. Are you sure you want to leave?';
+                e.returnValue = message;
+                return message;
+            }
+        });
+    </script>
+</body>
+</html>

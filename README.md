@@ -1,10 +1,12 @@
-# 🏪 THE TRENDY STATION
+# 🛍️ THE TRENDY STATION
 ### *Hệ thống quản lý shop thời trang hiện đại*
 
 ![PHP](https://img.shields.io/badge/PHP-7.4+-777BB4?style=flat&logo=php&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-5.7+-4479A1?style=flat&logo=mysql&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.1.3-7952B3?style=flat&logo=bootstrap&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
+
+> **📚 HƯỚNG DẪN ĐẦY ĐỦ:** [STUDENT_GUIDE.md](STUDENT_GUIDE.md) - Đọc ngay để biết cách cài đặt, sử dụng và xử lý lỗi!
 
 ---
 
