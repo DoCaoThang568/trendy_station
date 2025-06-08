@@ -268,7 +268,7 @@ $newSaleCode = generateCode('HD', 'sales', 'sale_code');
                                 <span style="font-weight: 600; color: var(--success-color);">
                                     <?php echo number_format($sale['total_amount']); ?>₫
                                 </span>
-                                <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); printInvoice(<?php echo $sale['id']; ?>, '<?php echo $sale['sale_code']; ?>')" title="In hóa đơn">
+                                <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); printInvoice(<?php echo $sale['id']; ?>)" title="In hóa đơn">
                                     🖨️
                                 </button>
                             </span>
@@ -685,16 +685,21 @@ function viewSaleDetail(saleCode, saleId) {
 }
 
 // Print invoice
-function printInvoice(saleId, saleCode) {
-    // Open print window
-    const printWindow = window.open(`print_invoice.php?sale_id=${saleId}`, '_blank', 
-        'width=800,height=600,scrollbars=yes,resizable=yes');
-    
-    if (!printWindow) {
-        showToast('Vui lòng cho phép popup để in hóa đơn', 'warning');
-    } else {
-        showToast(`Đang chuẩn bị in hóa đơn ${saleCode}...`, 'info');
+function printInvoice(saleId) {
+    // Ensure isSaleDetailModalOpen is false before opening a new window
+    // This prevents issues if a sale detail modal was open and not properly closed
+    if (isSaleDetailModalOpen) {
+        console.warn("Attempting to print invoice while sale detail modal might be open. Ensure modals are closed.");
+        // Optionally, try to close any open modal, though this might be aggressive
+        // const existingModal = document.getElementById('saleDetailModal');
+        // if (existingModal) {
+        //     existingModal.remove();
+        //     const overlay = document.getElementById('modalOverlay');
+        //     if (overlay) overlay.remove();
+        // }
+        // isSaleDetailModalOpen = false; // Reset flag
     }
+    window.open(`print_invoice.php?id=${saleId}`, '_blank', 'width=800,height=600');
 }
 
 // Close modal (local to sales.php, specifically for sales detail modal)
@@ -842,6 +847,7 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
 
 // Auto-save draft (localStorage)
 function saveDraft() {
