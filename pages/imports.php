@@ -268,7 +268,7 @@ $newImportCode = generateCode('NH', 'imports', 'import_code');
             <?php else: ?>
                 <?php foreach ($recentImports as $import): ?>
                     <div style="padding: 1rem 1.5rem; border-bottom: 1px solid rgba(40, 167, 69, 0.1); cursor: pointer; transition: var(--transition);" 
-                         onclick="viewImportDetail('<?php echo $import['import_code']; ?>', <?php echo $import['id']; ?>)"
+                         onclick="viewImportDetail(<?php echo $import['id']; ?>)" // MODIFIED: Pass only importId
                          onmouseover="this.style.background='var(--bg-tertiary)'"
                          onmouseout="this.style.background='transparent'">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -591,90 +591,72 @@ function resetForm() {
 }
 
 // View import detail
-function viewImportDetail(importCode, importId) {
-    showToast('Chức năng xem chi tiết phiếu nhập đang phát triển', 'info');
-}
-
-// Delete import
-function deleteImport(importId, importCode) {
-    if (confirm(`Bạn có chắc chắn muốn xóa phiếu nhập ${importCode}?\n\nLưu ý: Hành động này sẽ trừ lại số lượng tồn kho!`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="action" value="delete_import">
-            <input type="hidden" name="import_id" value="${importId}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-// Form validation
-document.getElementById('supplier_name').addEventListener('input', function() {
-    this.value = this.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, '');
-    calculateTotal();
-});
-
-document.getElementById('supplier_phone').addEventListener('input', function() {
-    this.value = this.value.replace(/[^0-9]/g, '');
-    if (this.value.length > 11) {
-        this.value = this.value.substring(0, 11);
-    }
-});
-
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        const submitBtn = document.getElementById('submitBtn');
-        if (!submitBtn.disabled) {
-            submitBtn.click();
-        }
-    }
-    
-    if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-        e.preventDefault();
-        resetForm();
-    }
-    
-    if (e.key === 'F2') {
-        e.preventDefault();
-        document.getElementById('productSearch').focus();
-    }
-    
-    if (e.key === 'F3') {
-        e.preventDefault();
-        addItemRow();
-    }
-});
-
-// View import detail
 function viewImportDetail(importId) {
+    console.log(`[viewImportDetail] Called for importId: ${importId}`);
+    showToast('Đang tải chi tiết phiếu nhập...', 'info');
     fetch(`ajax/get_import_detail.php?id=${importId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                showToast(data.error, 'error');
-                return;
+        .then(response => {
+            console.log('[viewImportDetail] Fetch response received:', response);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error('[viewImportDetail] HTTP error response text:', text);
+                    throw new Error(`Lỗi HTTP ${response.status}: ${text || 'Không có thông tin lỗi chi tiết'}`);
+                });
             }
-            
-            showImportDetailModal(data.import, data.details);
+            return response.text(); 
+        })
+        .then(text => {
+            console.log('[viewImportDetail] Response text received:', text);
+            try {
+                const data = JSON.parse(text);
+                console.log('[viewImportDetail] Parsed JSON data:', data);
+                if (data.error) {
+                    showToast(`Lỗi tải chi tiết: ${data.error}`, 'error');
+                    console.error('[viewImportDetail] Server error in JSON:', data.error);
+                    return;
+                }
+                // Check if import and details data are present
+                if (data.import && data.details) {
+                    console.log('[viewImportDetail] Data is valid, calling showImportDetailModal.');
+                    showImportDetailModal(data.import, data.details);
+                } else {
+                    console.error('[viewImportDetail] Invalid data structure received:', data);
+                    showToast('Lỗi: Dữ liệu chi tiết phiếu nhập không đầy đủ.', 'error');
+                }
+            } catch (e) {
+                console.error('[viewImportDetail] Lỗi phân tích JSON:', e);
+                console.error('[viewImportDetail] Dữ liệu nhận được không phải JSON:', text);
+                showToast('Lỗi: Dữ liệu trả về không hợp lệ. Vui lòng kiểm tra console (F12).', 'error');
+            }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showToast('Lỗi khi tải chi tiết phiếu nhập', 'error');
+            console.error('[viewImportDetail] Lỗi khi tải chi tiết phiếu nhập:', error);
+            showToast(`Lỗi: ${error.message}`, 'error');
         });
 }
 
 // Show import detail modal
 function showImportDetailModal(importData, details) {
+    console.log('[showImportDetailModal] Called with importData:', importData, 'and details:', details);
+    
+    const existingModal = document.querySelector('.modal-overlay.import-detail-modal');
+    if (existingModal) {
+        console.log('[showImportDetailModal] Removing existing import detail modal.');
+        existingModal.remove();
+    }
+
+    const modalId = 'importDetailModal_' + Date.now();
     const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    modal.id = modalId;
+    modal.className = 'modal-overlay import-detail-modal'; // Added a specific class for easier targeting
+    // Ensure the modal is displayed; CSS for .modal-overlay should handle visibility
+    // If not, uncomment and adjust: modal.style.display = 'flex'; 
+
     modal.innerHTML = `
         <div class="modal-content" style="max-width: 900px;">
             <div class="modal-header">
-                <h3>📋 Chi tiết phiếu nhập #${importData.id}</h3>
-                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                <h3>📋 Chi tiết phiếu nhập #${importData.import_code || importData.id}</h3>
+                <button class="modal-close" onclick="closeDynamicModal('${modalId}')">&times;</button>
             </div>
             <div class="modal-body">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
@@ -683,8 +665,8 @@ function showImportDetailModal(importData, details) {
                         <p><strong>Mã phiếu:</strong> ${importData.import_code}</p>
                         <p><strong>Ngày nhập:</strong> ${importData.created_at_formatted}</p>
                         <p><strong>Tình trạng:</strong> 
-                            <span class="badge ${importData.payment_status === 'paid' ? 'success' : importData.payment_status === 'partial' ? 'warning' : 'danger'}">
-                                ${importData.payment_status === 'paid' ? '✅ Đã thanh toán' : importData.payment_status === 'partial' ? '💰 Thanh toán một phần' : '⏳ Chưa thanh toán'}
+                            <span class="badge ${importData.status === 'Hoàn thành' ? 'success' : importData.status === 'Đang xử lý' ? 'warning' : 'danger'}">
+                                ${importData.status || 'Không rõ'}
                             </span>
                         </p>
                         <p><strong>Ghi chú:</strong> ${importData.notes || 'Không có ghi chú'}</p>
@@ -730,19 +712,39 @@ function showImportDetailModal(importData, details) {
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Đóng</button>
+                <button type="button" class="btn btn-secondary" onclick="closeDynamicModal('${modalId}')">Đóng</button>
                 <button type="button" class="btn btn-primary" onclick="printImport(${importData.id})">🖨️ In phiếu</button>
             </div>
         </div>
     `;
     
     document.body.appendChild(modal);
+    console.log('[showImportDetailModal] Modal appended to body. ID:', modalId, 'Element:', modal);
     
-    // Add styles if not exists
+    // Force a reflow to ensure display style is applied before opacity transition (if any)
+    void modal.offsetWidth;
+    modal.style.opacity = '1'; // Assuming you have CSS for fade-in
+
+    // Add styles if not exists (this part seems fine)
     if (!document.querySelector('#import-detail-styles')) {
         const styles = document.createElement('style');
         styles.id = 'import-detail-styles';
         styles.textContent = `
+            .modal-overlay.import-detail-modal {
+                /* Ensure it's visible - adjust as per your existing .modal-overlay */
+                display: flex; /* or block */
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.5);
+                justify-content: center;
+                align-items: center;
+                z-index: 1000; /* Ensure it's on top */
+                opacity: 0; /* For fade-in effect */
+                transition: opacity 0.3s ease-in-out;
+            }
             .import-detail-table {
                 width: 100%;
                 border-collapse: collapse;
@@ -793,6 +795,21 @@ function showImportDetailModal(importData, details) {
             }
         `;
         document.head.appendChild(styles);
+    }
+}
+
+// Generic function to close dynamically created modals by ID
+function closeDynamicModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        console.log(`[closeDynamicModal] Closing modal with ID: ${modalId}`);
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.remove();
+            console.log(`[closeDynamicModal] Modal ${modalId} removed.`);
+        }, 300); // Match transition time
+    } else {
+        console.warn(`[closeDynamicModal] Modal with ID ${modalId} not found.`);
     }
 }
 

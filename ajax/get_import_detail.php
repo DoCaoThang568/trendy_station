@@ -29,7 +29,7 @@ try {
     
     // Get import details
     $stmt = $pdo->prepare("
-        SELECT id.*, p.name as product_name, p.code as product_code
+        SELECT id.*, p.name as product_name, p.product_code as product_code
         FROM import_details id
         JOIN products p ON id.product_id = p.id
         WHERE id.import_id = ?
@@ -43,10 +43,15 @@ try {
     $import['total_amount_formatted'] = number_format($import['total_amount'], 0, ',', '.');
     
     foreach ($details as &$detail) {
-        $detail['unit_price_formatted'] = number_format($detail['unit_price'], 0, ',', '.');
-        $detail['total_price_formatted'] = number_format($detail['total_price'], 0, ',', '.');
+        $unit_cost_val = isset($detail['unit_cost']) ? (float)$detail['unit_cost'] : 0;
+        $quantity_val = isset($detail['quantity']) ? (int)$detail['quantity'] : 0;
+        $total_cost_val = isset($detail['total_cost']) ? (float)$detail['total_cost'] : ($unit_cost_val * $quantity_val);
+
+        $detail['unit_price_formatted'] = number_format($unit_cost_val, 0, ',', '.');
+        $detail['total_price_formatted'] = number_format($total_cost_val, 0, ',', '.');
     }
     
+    header('Content-Type: application/json');
     echo json_encode([
         'import' => $import,
         'details' => $details
@@ -54,6 +59,7 @@ try {
     
 } catch (Exception $e) {
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Lỗi server: ' . $e->getMessage()]);
 }
 ?>

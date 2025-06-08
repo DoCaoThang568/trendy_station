@@ -296,10 +296,13 @@ const products = <?php echo json_encode($products); ?>;
 let allProducts = [...products]; // Backup for search
 let itemCount = 0;
 let cartItems = [];
+let isSaleDetailModalOpen = false; // Flag for sales detail modal
 
 // Format currency helper
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
+    // Ensure amount is a number, default to 0 if not (e.g. NaN, undefined)
+    const numAmount = parseFloat(amount);
+    return new Intl.NumberFormat('vi-VN').format(isNaN(numAmount) ? 0 : numAmount) + '₫';
 }
 
 // Search products
@@ -424,20 +427,30 @@ function selectProduct(select, itemId) {
     const option = select.selectedOptions[0];
     const priceInput = document.getElementById(`price_${itemId}`);
     const quantityInput = select.parentElement.querySelector('input[type="number"]');
-    
+
     if (option.value) {
-        const price = parseFloat(option.dataset.price);
+        let price = parseFloat(option.dataset.price);
+        if (isNaN(price) || typeof option.dataset.price === 'undefined') {
+            price = 0;
+            console.warn(`Product ID ${option.value} (${option.dataset.name || 'N/A'}) has an invalid or missing price. Defaulting to 0₫.`);
+            showToast(`Giá sản phẩm "${option.dataset.name || 'N/A'}" không hợp lệ hoặc bị thiếu. Đặt tạm là 0₫.`, 'warning');
+        }
+
         const stock = parseInt(option.dataset.stock);
-        
+        const productName = option.dataset.name || 'Sản phẩm không tên';
+
         priceInput.value = formatCurrency(price);
         quantityInput.max = stock;
-        
-        // Update cart item
+        if (parseInt(quantityInput.value) > stock) {
+            quantityInput.value = stock > 0 ? 1 : 0; // Default to 1 if stock available, else 0
+        }
+
+
         updateCartItem(itemId, {
             product_id: option.value,
-            product_name: option.dataset.name,
+            product_name: productName,
             unit_price: price,
-            quantity: parseInt(quantityInput.value),
+            quantity: parseInt(quantityInput.value) || 0,
             stock: stock
         });
     } else {
@@ -445,7 +458,8 @@ function selectProduct(select, itemId) {
         quantityInput.max = '';
         removeCartItem(itemId);
     }
-    
+    // updateQuantity will be called, which also calls calculateTotal
+    // Trigger updateQuantity to ensure total is calculated and cart is updated correctly
     updateQuantity(quantityInput, itemId);
 }
 
@@ -454,43 +468,59 @@ function updateQuantity(input, itemId) {
     const row = document.getElementById(`item_${itemId}`);
     const select = row.querySelector('select');
     const option = select.selectedOptions[0];
-    
+    let currentQuantity = parseInt(input.value) || 0;
+
     if (option.value) {
-        const price = parseFloat(option.dataset.price);
-        const quantity = parseInt(input.value) || 0;
+        let price = parseFloat(option.dataset.price);
+        if (isNaN(price) || typeof option.dataset.price === 'undefined') {
+            price = 0;
+            // Warning already shown in selectProduct, ensure price is safe
+        }
+
         const stock = parseInt(option.dataset.stock);
-        
-        // Check stock
-        if (quantity > stock) {
+        const productName = option.dataset.name || 'Sản phẩm không tên';
+
+        // Validate and correct quantity
+        if (currentQuantity < 0) {
+            currentQuantity = 0;
+            input.value = 0;
+        }
+
+        if (stock <= 0 && currentQuantity > 0) { // Product is out of stock
+            showToast(`Sản phẩm "${productName}" đã hết hàng! Không thể thêm.`, 'danger');
+            currentQuantity = 0;
+            input.value = 0;
+        } else if (currentQuantity > stock) {
+            showToast(`Số lượng "${productName}" (${currentQuantity}) vượt quá tồn kho (${stock}). Đã điều chỉnh.`, 'warning');
+            currentQuantity = stock;
             input.value = stock;
-            showToast(`Chỉ còn ${stock} sản phẩm trong kho`, 'warning');
+        }
+
+        // Stock level warnings (only if quantity > 0 and stock > 0)
+        if (currentQuantity > 0 && stock > 0) {
             if (stock <= 2) {
-                showToast(`⚠️ Sản phẩm "${option.dataset.name}" sắp hết hàng!`, 'danger');
+                showToast(`🚨 Sản phẩm "${productName}" sắp hết hàng! Chỉ còn ${stock}.`, 'danger');
+            } else if (stock <= 5) {
+                showToast(`⚠️ Sản phẩm "${productName}" sắp hết hàng! Chỉ còn ${stock}.`, 'warning');
             }
-            return;
         }
         
-        // Stock warning
-        if (stock <= 5 && quantity > 0) {
-            const warningMsg = stock <= 2 ? 
-                `🚨 Chỉ còn ${stock} sản phẩm trong kho!` : 
-                `⚠️ Sản phẩm này chỉ còn ${stock} trong kho`;
-            showToast(warningMsg, stock <= 2 ? 'danger' : 'warning');
-        }
-        
-        const total = price * quantity;
+        const total = price * currentQuantity;
         document.getElementById(`total_${itemId}`).value = formatCurrency(total);
-        
-        // Update cart item
+
         updateCartItem(itemId, {
             product_id: option.value,
-            product_name: option.dataset.name,
+            product_name: productName,
             unit_price: price,
-            quantity: quantity,
+            quantity: currentQuantity,
             stock: stock
         });
+    } else {
+        // If no product is selected in the row, ensure its total is zeroed out
+        document.getElementById(`total_${itemId}`).value = formatCurrency(0);
+        removeCartItem(itemId); // Ensure it's removed from cart if product is deselected
     }
-    
+
     calculateTotal();
 }
 
@@ -576,35 +606,47 @@ function resetForm() {
 
 // View sale detail
 function viewSaleDetail(saleCode, saleId) {
-    // Show loading
+    if (isSaleDetailModalOpen) {
+        console.log('Sale detail modal is already open or opening. Request ignored.');
+        return;
+    }
+    isSaleDetailModalOpen = true;
+
     showToast('Đang tải thông tin hóa đơn...', 'info');
-    
-    // Create and show modal
+
+    const modalOverlayId = 'saleDetailModalOverlay_' + Date.now(); // Unique ID for the modal
     const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    modal.id = modalOverlayId;
+    modal.className = 'modal-overlay'; // This class should have CSS for overlay display
+
+    const saleDetailContentId = `saleDetailContent_${modalOverlayId}`;
+
     modal.innerHTML = `
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
                 <h3>📋 Chi tiết hóa đơn ${saleCode}</h3>
-                <button class="btn btn-small btn-danger" onclick="closeModal(this)">✕</button>
+                <button class="btn btn-small btn-danger" onclick="closeModal('${modalOverlayId}')">✕</button>
             </div>
-            <div class="modal-body" id="saleDetailContent">
+            <div class="modal-body" id="${saleDetailContentId}">
                 <div style="text-align: center; padding: 2rem;">
                     <div class="loading-spinner"></div>
                     <p>Đang tải...</p>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal(this)">Đóng</button>
+                <button class="btn btn-secondary" onclick="closeModal('${modalOverlayId}')">Đóng</button>
                 <button class="btn btn-primary" onclick="printInvoice(${saleId}, '${saleCode}')">🖨️ In hóa đơn</button>
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
-    modal.style.display = 'flex';
-    
-    // Load sale details via AJAX
+    // Ensure modal is displayed, assuming CSS for .modal-overlay handles this
+    // If .modal-overlay uses display: none by default, you might need:
+    modal.style.display = 'flex'; // Or 'block', depending on your CSS for centering/display
+
+    const saleDetailContentEl = document.getElementById(saleDetailContentId);
+
     fetch('ajax/get_sale_detail.php', {
         method: 'POST',
         headers: {
@@ -612,25 +654,34 @@ function viewSaleDetail(saleCode, saleId) {
         },
         body: JSON.stringify({ sale_id: saleId })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
-        if (data.success) {
-            document.getElementById('saleDetailContent').innerHTML = data.html;
-        } else {
-            document.getElementById('saleDetailContent').innerHTML = `
+        if (data.success && saleDetailContentEl) {
+            saleDetailContentEl.innerHTML = data.html;
+        } else if (saleDetailContentEl) {
+            saleDetailContentEl.innerHTML = `
                 <div style="text-align: center; padding: 2rem; color: var(--danger-color);">
-                    ❌ Không thể tải thông tin hóa đơn
+                    ❌ Không thể tải thông tin hóa đơn: ${data.error || 'Lỗi không xác định.'}
                 </div>
             `;
         }
     })
     .catch(error => {
-        document.getElementById('saleDetailContent').innerHTML = `
-            <div style="text-align: center; padding: 2rem; color: var(--danger-color);">
-                ❌ Lỗi kết nối: ${error.message}
-            </div>
-        `;
+        console.error('Error fetching sale detail:', error);
+        if (saleDetailContentEl) {
+            saleDetailContentEl.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: var(--danger-color);">
+                    ❌ Lỗi kết nối hoặc xử lý: ${error.message}
+                </div>
+            `;
+        }
     });
+    // Note: isSaleDetailModalOpen is reset in closeModal
 }
 
 // Print invoice
@@ -646,13 +697,30 @@ function printInvoice(saleId, saleCode) {
     }
 }
 
-// Close modal
-function closeModal(button) {
-    const modal = button.closest('.modal-overlay');
-    modal.style.opacity = '0';
-    setTimeout(() => {
-        modal.remove();
-    }, 300);
+// Close modal (local to sales.php, specifically for sales detail modal)
+function closeModal(modalId) { // Expects modalId
+    const modalOverlay = document.getElementById(modalId);
+
+    if (modalOverlay) {
+        console.log('Closing modal:', modalId);
+        modalOverlay.style.opacity = '0';
+        modalOverlay.style.pointerEvents = 'none'; // Prevent interactions during fade out
+
+        setTimeout(() => {
+            if (modalOverlay.parentNode) {
+                modalOverlay.parentNode.removeChild(modalOverlay);
+                console.log('Modal removed from DOM:', modalId);
+            }
+            // Check if this was the sales detail modal before resetting the flag
+            if (modalId && modalId.startsWith('saleDetailModalOverlay')) {
+                 isSaleDetailModalOpen = false;
+            }
+        }, 300); // Match animation time if any
+    } else {
+        console.warn('closeModal called with ID, but modal overlay not found:', modalId);
+        // Fallback, if somehow the ID was lost but we know it's a sales detail modal context
+        isSaleDetailModalOpen = false; 
+    }
 }
 
 // Form validation
