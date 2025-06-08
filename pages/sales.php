@@ -310,7 +310,7 @@ function searchProducts(query) {
     } else {
         const filtered = allProducts.filter(p => 
             p.name.toLowerCase().includes(query) || 
-            p.code.toLowerCase().includes(query) ||
+            p.product_code.toLowerCase().includes(query) || // Changed p.code to p.product_code
             (p.category_name && p.category_name.toLowerCase().includes(query))
         );
         products.splice(0, products.length, ...filtered);
@@ -327,7 +327,7 @@ function searchProducts(query) {
                         data-price="${p.selling_price}"
                         data-stock="${p.stock_quantity}"
                         ${p.id == currentValue ? 'selected' : ''}>
-                    ${p.code} - ${p.name} (${p.stock_quantity} còn lại)
+                    ${p.product_code} - ${p.name} (${p.stock_quantity} còn lại)
                 </option>
             `).join('')}
         `;
@@ -365,7 +365,7 @@ function addItemRow() {
                             data-price="${p.selling_price}"
                             data-stock="${p.stock_quantity}"
                             class="${stockClass}">
-                        ${p.code} - ${p.name} (${p.stock_quantity} còn lại)
+                        ${p.product_code} - ${p.name} (${p.stock_quantity} còn lại)
                     </option>
                 `;
             }).join('')}
@@ -682,7 +682,7 @@ document.getElementById('productSearch').addEventListener('keydown', function(e)
         
         // Try to find exact match by code
         const exactMatch = allProducts.find(p => 
-            p.code.toLowerCase() === query.toLowerCase()
+            p.product_code.toLowerCase() === query.toLowerCase() // Changed p.code to p.product_code
         );
         
         if (exactMatch && exactMatch.stock_quantity > 0) {
