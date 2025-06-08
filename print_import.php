@@ -284,8 +284,8 @@ try {
                     <td class="text-center"><?= htmlspecialchars($detail['product_code']) ?></td>
                     <td><?= htmlspecialchars($detail['product_name']) ?></td>
                     <td class="text-center"><?= number_format($detail['quantity']) ?></td>
-                    <td class="text-right"><?= number_format($detail['unit_price'], 0, ',', '.') ?>đ</td>
-                    <td class="text-right"><?= number_format($detail['total_price'], 0, ',', '.') ?>đ</td>
+                    <td class="text-right"><?= number_format($detail['unit_cost'], 0, ',', '.') ?>đ</td>
+                    <td class="text-right"><?= number_format($detail['total_cost'], 0, ',', '.') ?>đ</td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
