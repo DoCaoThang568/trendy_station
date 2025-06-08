@@ -169,9 +169,8 @@ $newProductCode = generateCode('SP', 'products', 'product_code');
     </div>
 <?php endif; ?>
 
-<div class="toolbar">
-    <div class="search-box">
-        <input type="text" id="productSearch" placeholder="Tìm kiếm sản phẩm..." value="<?php echo htmlspecialchars($search); ?>" onkeyup="debouncedSearch(this.value)">
+<div class="toolbar">    <div class="search-box">
+        <input type="text" id="productSearch" placeholder="Tìm theo tên, mã, danh mục, size, màu... (F3)" value="<?php echo htmlspecialchars($search); ?>" title="Tìm kiếm sản phẩm theo bất kỳ thông tin nào. Nhấn Escape để xóa bộ lọc.">
     </div>
     <button class="btn btn-primary" onclick="openProductModal()">
         ➕ Thêm sản phẩm
@@ -334,18 +333,92 @@ function debounce(func, wait) {
     };
 }
 
-// Search functionality
+// Search functionality - Using AJAX instead of page reload
 function handleSearch(searchTerm) {
-    if (searchTerm.length >= 2 || searchTerm.length === 0) {
-        window.location.href = `index.php?page=products&search=${encodeURIComponent(searchTerm)}`;
+    const tbody = document.querySelector('#productsTable tbody');
+    
+    // Remove any existing "no results" row first
+    const existingNoResultsRow = tbody.querySelector('.no-results-row');
+    if (existingNoResultsRow) {
+        existingNoResultsRow.remove();
+    }
+    
+    if (searchTerm.length === 0) {
+        // Show all products
+        const rows = tbody.querySelectorAll('tr:not(.no-results-row)');
+        rows.forEach(row => {
+            if (row.cells.length > 1) { // Skip empty state row
+                row.style.display = '';
+            }
+        });
+        return;
+    }
+    
+    if (searchTerm.length >= 1) { // Reduced from 2 to 1 for better UX
+        // Filter existing rows
+        const rows = tbody.querySelectorAll('tr:not(.no-results-row)');
+        const searchLower = searchTerm.toLowerCase();
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            if (row.cells.length === 1) { // Skip empty state row
+                row.style.display = 'none';
+                return;
+            }
+            
+            const productCode = row.cells[0].textContent.toLowerCase();
+            const productName = row.cells[1].textContent.toLowerCase();
+            const category = row.cells[2].textContent.toLowerCase();
+            const size = row.cells[3].textContent.toLowerCase();
+            const color = row.cells[4].textContent.toLowerCase();
+            
+            const matches = productCode.includes(searchLower) || 
+                          productName.includes(searchLower) || 
+                          category.includes(searchLower) ||
+                          size.includes(searchLower) ||
+                          color.includes(searchLower);
+            
+            if (matches) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Show "no results" message if no matches found
+        if (visibleCount === 0) {
+            const noResultsRow = document.createElement('tr');
+            noResultsRow.className = 'no-results-row';
+            noResultsRow.innerHTML = `
+                <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    🔍 Không tìm thấy sản phẩm nào với từ khóa "<strong>${escapeHtml(searchTerm)}</strong>"
+                    <br><small>Hãy thử tìm kiếm bằng mã sản phẩm, tên, danh mục, size hoặc màu sắc</small>
+                </td>
+            `;
+            tbody.appendChild(noResultsRow);
+        }
     }
 }
 
-// Debounced search
-const debouncedSearch = debounce(handleSearch, 500);
+// Debounced search - keeps focus
+const debouncedSearch = debounce(handleSearch, 300);
 
 document.getElementById('productSearch').addEventListener('input', function(e) {
     debouncedSearch(e.target.value);
+});
+
+// Handle Enter key for search and clear search with Escape
+document.getElementById('productSearch').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSearch(this.value);
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.value = '';
+        handleSearch('');
+        showToast('Đã xóa bộ lọc tìm kiếm', 'info');
+    }
 });
 
 // Open product modal
@@ -493,10 +566,11 @@ document.addEventListener('keydown', function(e) {
         showToast('Mở form thêm sản phẩm (F2)', 'info');
         return;
     }
-    
-    if (e.key === 'F3') {
+      if (e.key === 'F3') {
         e.preventDefault();
-        document.getElementById('productSearch').focus();
+        const searchInput = document.getElementById('productSearch');
+        searchInput.focus();
+        searchInput.select(); // Select all text for easy replacement
         showToast('Focus vào tìm kiếm sản phẩm (F3)', 'info');
         return;
     }
@@ -518,10 +592,11 @@ document.addEventListener('keydown', function(e) {
                 e.preventDefault();
                 openProductModal();
                 showToast('Thêm sản phẩm mới (Ctrl+N)', 'info');
-                break;
-            case 'f':
+                break;            case 'f':
                 e.preventDefault();
-                document.getElementById('productSearch').focus();
+                const searchInput = document.getElementById('productSearch');
+                searchInput.focus();
+                searchInput.select(); // Select all text for easy replacement
                 showToast('Tìm kiếm sản phẩm (Ctrl+F)', 'info');
                 break;
             case 's':
