@@ -1,5 +1,5 @@
 <?php
-require_once '../config/database.php';
+require_once 'config/database.php';
 
 // Xử lý AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -168,16 +168,23 @@ $total_customers = $count_stmt->fetchColumn();
 $total_pages = ceil($total_customers / $per_page);
 
 // Get customers
-$sql = "SELECT *, 
+$sql = "SELECT c.*, 
+        s.latest_sale_date as last_order_date, /* Get last order date from subquery */
         CASE 
-            WHEN last_order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 'Hoạt động'
-            WHEN last_order_date >= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN 'Ít hoạt động'
+            WHEN s.latest_sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 'Hoạt động'
+            WHEN s.latest_sale_date >= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN 'Ít hoạt động'
             ELSE 'Lâu không mua'
         END as activity_status,
-        DATEDIFF(NOW(), last_order_date) as days_since_last_order,
-        YEAR(NOW()) - YEAR(birth_date) as age
-        FROM customers $where_sql 
-        ORDER BY total_spent DESC, created_at DESC 
+        DATEDIFF(NOW(), s.latest_sale_date) as days_since_last_order,
+        YEAR(NOW()) - YEAR(c.birth_date) as age
+        FROM customers c
+        LEFT JOIN (
+            SELECT customer_id, MAX(sale_date) as latest_sale_date 
+            FROM sales 
+            GROUP BY customer_id
+        ) s ON c.id = s.customer_id
+        $where_sql 
+        ORDER BY c.total_spent DESC, c.created_at DESC 
         LIMIT $per_page OFFSET $offset";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -192,6 +199,8 @@ $stats_sql = "SELECT
     SUM(total_spent) as total_revenue,
     AVG(total_spent) as avg_spent
     FROM customers";
+$stats_stmt = $pdo->query($stats_sql);
+$stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
 <style>
@@ -621,7 +630,7 @@ $stats_sql = "SELECT
                                 <span class="badge activity-badge activity-<?php echo str_replace(' ', '-', strtolower($customer['activity_status'])); ?>">
                                     <?php echo $customer['activity_status']; ?>
                                 </span>
-                                <?php if ($customer['status'] === 'inactive'): ?>
+                                <?php if (isset($customer['is_active']) && $customer['is_active'] == 0): ?>
                                     <span class="badge bg-secondary">Không hoạt động</span>
                                 <?php endif; ?>
                             </div>
