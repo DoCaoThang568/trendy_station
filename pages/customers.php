@@ -292,9 +292,32 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 
 .customer-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 1.5rem 1rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
     gap: 1rem;
+    flex: 1;
+}
+
+.header-right .btn {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.header-right .btn:hover {
+    background: #f3f4f6;
+    color: #374151;
 }
 
 .customer-avatar {
@@ -326,52 +349,90 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     font-size: 0.9rem;
 }
 
-.customer-info {
-    padding: 0 1.5rem;
+.customer-contact {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #f3f4f6;
 }
 
-.info-row {
+.contact-item {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
     font-size: 0.9rem;
 }
 
-.info-icon {
-    width: 20px;
+.contact-item:last-child {
+    margin-bottom: 0;
+}
+
+.contact-item i {
+    width: 16px;
+    font-size: 0.9rem;
 }
 
 .customer-stats {
-    display: flex;
     padding: 1rem 1.5rem;
+    display: flex;
     gap: 1rem;
-    background: #f8f9fa;
-    margin: 1rem 0 0;
+    border-bottom: 1px solid #f3f4f6;
 }
 
 .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     flex: 1;
-    text-align: center;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
 }
 
-.stat-item .stat-value {
-    font-weight: bold;
-    color: #2d3748;
+.stat-icon {
+    width: 32px;
+    height: 32px;
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: #1f2937;
     font-size: 0.95rem;
+    line-height: 1;
 }
 
-.stat-item .stat-label {
-    font-size: 0.75rem;
-    color: #6c757d;
+.stat-label {
+    font-size: 0.7rem;
+    color: #6b7280;
     margin-top: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
 }
 
 .customer-badges {
-    padding: 0 1.5rem 1rem;
+    padding: 1rem 1.5rem;
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
 }
 
 .membership-badge.membership-vvip {
@@ -405,8 +466,40 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 .last-order {
-    padding: 0 1.5rem 1rem;
-    font-size: 0.8rem;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #f9fafb;
+}
+
+.last-order-icon {
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.last-order-content {
+    flex: 1;
+}
+
+.last-order-date {
+    font-size: 0.85rem;
+    color: #374151;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.last-order-days {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
 }
 
 .pagination-nav {
@@ -560,66 +653,55 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
         <?php else: ?>
             <div class="row">
                 <?php foreach ($customers as $customer): ?>
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="customer-card" data-membership="<?php echo $customer['membership_level']; ?>">
-                            <!-- Header card với màu sắc theo hạng -->
+                    <div class="col-md-6 col-lg-4 mb-4">                        <div class="customer-card" data-membership="<?php echo $customer['membership_level']; ?>">
+                            <!-- Header với avatar và thông tin cơ bản -->
                             <div class="customer-header">
-                                <div class="customer-avatar">
-                                    <?php echo strtoupper(substr($customer['name'], 0, 2)); ?>
+                                <div class="header-left">
+                                    <div class="customer-avatar">
+                                        <?php echo strtoupper(substr($customer['name'], 0, 2)); ?>
+                                    </div>
+                                    <div class="customer-basic">
+                                        <h5 class="customer-name"><?php echo htmlspecialchars($customer['name']); ?></h5>
+                                        <span class="customer-code"><?php echo $customer['customer_code']; ?></span>
+                                    </div>
                                 </div>
-                                <div class="customer-basic">
-                                    <h5 class="customer-name"><?php echo htmlspecialchars($customer['name']); ?></h5>
-                                    <span class="customer-code"><?php echo $customer['customer_code']; ?></span>
-                                </div>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm" data-bs-toggle="dropdown">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="#" onclick="editCustomer(<?php echo $customer['id']; ?>)">
-                                            <i class="fas fa-edit"></i> Sửa thông tin</a></li>
-                                        <li><a class="dropdown-item" href="#" onclick="viewCustomerDetail(<?php echo $customer['id']; ?>)">
-                                            <i class="fas fa-eye"></i> Xem chi tiết</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteCustomer(<?php echo $customer['id']; ?>, '<?php echo htmlspecialchars($customer['name']); ?>')">
-                                            <i class="fas fa-trash"></i> Xóa khách hàng</a></li>
-                                    </ul>
+                                <div class="header-right">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-h"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" onclick="editCustomer(<?php echo $customer['id']; ?>)">
+                                                <i class="fas fa-edit"></i> Sửa thông tin</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="viewCustomerDetail(<?php echo $customer['id']; ?>)">
+                                                <i class="fas fa-eye"></i> Xem chi tiết</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteCustomer(<?php echo $customer['id']; ?>, '<?php echo htmlspecialchars($customer['name']); ?>')">
+                                                <i class="fas fa-trash"></i> Xóa khách hàng</a></li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Thông tin khách hàng -->
-                            <div class="customer-info">
-                                <div class="info-row">
-                                    <span class="info-icon">📞</span>
-                                    <span class="info-text"><?php echo $customer['phone']; ?></span>
+                            <!-- Thông tin liên lạc -->
+                            <div class="customer-contact">
+                                <div class="contact-item">
+                                    <i class="fas fa-phone text-primary"></i>
+                                    <span><?php echo $customer['phone']; ?></span>
                                 </div>
                                 <?php if ($customer['email']): ?>
-                                <div class="info-row">
-                                    <span class="info-icon">✉️</span>
-                                    <span class="info-text"><?php echo htmlspecialchars($customer['email']); ?></span>
+                                <div class="contact-item">
+                                    <i class="fas fa-envelope text-success"></i>
+                                    <span><?php echo htmlspecialchars($customer['email']); ?></span>
                                 </div>
                                 <?php endif; ?>
-                                <div class="info-row">
-                                    <span class="info-icon">🎂</span>
-                                    <span class="info-text">
-                                        <?php echo $customer['age'] ? $customer['age'] . ' tuổi' : 'Chưa có'; ?>
-                                    </span>
+                                <div class="contact-item">
+                                    <i class="fas fa-birthday-cake text-warning"></i>
+                                    <span><?php echo $customer['age'] ? $customer['age'] . ' tuổi' : 'Chưa có'; ?></span>
                                 </div>
                             </div>
 
-                            <!-- Thống kê mua hàng -->
-                            <div class="customer-stats">
-                                <div class="stat-item">
-                                    <div class="stat-value"><?php echo number_format($customer['total_spent']); ?>đ</div>
-                                    <div class="stat-label">Tổng chi tiêu</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-value"><?php echo $customer['total_orders']; ?></div>
-                                    <div class="stat-label">Đơn hàng</div>
-                                </div>
-                            </div>
-
-                            <!-- Badges -->
+                            <!-- Badges hạng thành viên và trạng thái -->
                             <div class="customer-badges">
                                 <span class="badge membership-badge membership-<?php echo strtolower($customer['membership_level']); ?>">
                                     <?php 
@@ -635,13 +717,42 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                                 <?php endif; ?>
                             </div>
 
+                            <!-- Thống kê mua hàng -->
+                            <div class="customer-stats">
+                                <div class="stat-item">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-money-bill-wave text-success"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-value"><?php echo number_format($customer['total_spent']); ?>đ</div>
+                                        <div class="stat-label">Tổng chi tiêu</div>
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-shopping-bag text-info"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-value"><?php echo $customer['total_orders']; ?></div>
+                                        <div class="stat-label">Đơn hàng</div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Lần mua cuối -->
                             <?php if ($customer['last_order_date']): ?>
                             <div class="last-order">
-                                <small class="text-muted">
-                                    Mua cuối: <?php echo date('d/m/Y', strtotime($customer['last_order_date'])); ?>
-                                    (<?php echo $customer['days_since_last_order']; ?> ngày trước)
-                                </small>
+                                <div class="last-order-icon">
+                                    <i class="fas fa-clock text-muted"></i>
+                                </div>
+                                <div class="last-order-content">
+                                    <div class="last-order-date">
+                                        <?php echo date('d/m/Y', strtotime($customer['last_order_date'])); ?>
+                                    </div>
+                                    <div class="last-order-days">
+                                        <?php echo $customer['days_since_last_order']; ?> ngày trước
+                                    </div>
+                                </div>
                             </div>
                             <?php endif; ?>
                         </div>
