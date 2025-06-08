@@ -134,13 +134,21 @@ $recentImports = fetchAll("
 ");
 
 // Get products for selection
-$products = fetchAll("
-    SELECT p.*, c.name as category_name 
-    FROM products p 
-    LEFT JOIN categories c ON p.category_id = c.id 
-    WHERE p.status = 'active'
-    ORDER BY p.name
+$products_stmt = $pdo->query("
+    SELECT 
+        p.id, 
+        p.name, 
+        p.product_code, 
+        p.stock_quantity, 
+        p.import_price, 
+        p.selling_price,
+        c.name as category_name
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.is_active = 1
+    ORDER BY p.name ASC
 ");
+$products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get suppliers for selection
 $suppliers = fetchAll("SELECT * FROM suppliers WHERE status = 'active' ORDER BY name");
@@ -331,7 +339,7 @@ function searchProducts(query) {
     } else {
         const filtered = allProducts.filter(p => 
             p.name.toLowerCase().includes(query) || 
-            p.code.toLowerCase().includes(query) ||
+            p.product_code.toLowerCase().includes(query) ||
             (p.category_name && p.category_name.toLowerCase().includes(query))
         );
         products.splice(0, products.length, ...filtered);
@@ -347,7 +355,7 @@ function searchProducts(query) {
                         data-name="${p.name}" 
                         data-import-price="${p.import_price || 0}"
                         ${p.id == currentValue ? 'selected' : ''}>
-                    ${p.code} - ${p.name} (Tồn: ${p.stock_quantity})
+                    ${p.product_code} - ${p.name} (Tồn: ${p.stock_quantity})
                 </option>
             `).join('')}
         `;
@@ -381,7 +389,7 @@ function addItemRow() {
                 <option value="${p.id}" 
                         data-name="${p.name}" 
                         data-import-price="${p.import_price || 0}">
-                    ${p.code} - ${p.name} (Tồn: ${p.stock_quantity})
+                    ${p.product_code} - ${p.name} (Tồn: ${p.stock_quantity})
                 </option>
             `).join('')}
         </select>

@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $address = trim($_POST['address'] ?? '');
             $gender = $_POST['gender'] ?? 'Khác';
             $birth_date = $_POST['birth_date'] ?? null;
+            $is_active_val = 1; // Mặc định là active khi thêm mới
             $notes = trim($_POST['notes'] ?? '');
             
             // Validation
@@ -39,12 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $customer_code = 'KH' . str_pad($max_num + 1, 3, '0', STR_PAD_LEFT);
             
             // Insert customer
-            $sql = "INSERT INTO customers (customer_code, name, phone, email, address, gender, birth_date, notes) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $sql = "INSERT INTO customers (customer_code, name, phone, email, address, gender, birth_date, notes, is_active) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $pdo->prepare($sql);
             
             try {
-                $stmt->execute([$customer_code, $name, $phone, $email, $address, $gender, $birth_date, $notes]);
+                $stmt->execute([$customer_code, $name, $phone, $email, $address, $gender, $birth_date, $notes, $is_active_val]);
                 echo json_encode(['success' => true, 'message' => "Thêm khách hàng $customer_code thành công!"]);
             } catch (Exception $e) {
                 echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
@@ -59,7 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $address = trim($_POST['address'] ?? '');
             $gender = $_POST['gender'] ?? 'Khác';
             $birth_date = $_POST['birth_date'] ?? null;
-            $status = $_POST['status'] ?? 'active';
+            $status_from_post = $_POST['status'] ?? 'active'; // Giữ nguyên cách nhận từ form
+            $is_active_val = ($status_from_post === 'active') ? 1 : 0; // Chuyển đổi sang 0/1
             $notes = trim($_POST['notes'] ?? '');
             
             if (empty($name) || empty($phone) || !$id) {
@@ -76,11 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             
-            $sql = "UPDATE customers SET name=?, phone=?, email=?, address=?, gender=?, birth_date=?, status=?, notes=? WHERE id=?";
+            $sql = "UPDATE customers SET name=?, phone=?, email=?, address=?, gender=?, birth_date=?, is_active=?, notes=? WHERE id=?";
             $stmt = $pdo->prepare($sql);
             
             try {
-                $stmt->execute([$name, $phone, $email, $address, $gender, $birth_date, $status, $notes, $id]);
+                $stmt->execute([$name, $phone, $email, $address, $gender, $birth_date, $is_active_val, $notes, $id]);
                 echo json_encode(['success' => true, 'message' => 'Cập nhật khách hàng thành công!']);
             } catch (Exception $e) {
                 echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
@@ -147,8 +149,8 @@ if ($search) {
 }
 
 if ($status_filter && $status_filter !== 'all') {
-    $where_clauses[] = "status = ?";
-    $params[] = $status_filter;
+    $where_clauses[] = "is_active = ?"; //Sửa status thành is_active
+    $params[] = ($status_filter === 'active') ? 1 : 0; // Chuyển đổi active/inactive thành 1/0
 }
 
 if ($membership_filter && $membership_filter !== 'all') {
@@ -184,7 +186,7 @@ $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Thống kê nhanh
 $stats_sql = "SELECT 
     COUNT(*) as total_customers,
-    COUNT(CASE WHEN status = 'active' THEN 1 END) as active_customers,
+    COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_customers,
     COUNT(CASE WHEN membership_level = 'VIP' THEN 1 END) as vip_customers,
     COUNT(CASE WHEN membership_level = 'VVIP' THEN 1 END) as vvip_customers,
     SUM(total_spent) as total_revenue,

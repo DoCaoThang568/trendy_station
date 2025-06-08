@@ -75,7 +75,7 @@ $recent_sales = $recent_sales_stmt->fetchAll();
 
 // Get returns
 $returns_stmt = $pdo->prepare("
-    SELECT r.*, s.invoice_code, c.name as customer_name
+    SELECT r.*, s.sale_code, c.name as customer_name
     FROM returns r
     JOIN sales s ON r.sale_id = s.id
     LEFT JOIN customers c ON s.customer_id = c.id
@@ -120,7 +120,7 @@ include '../includes/header.php';
                     <div class="return-header">
                         <div class="return-info">
                             <h3>↩️ Phiếu trả #<?= $return['id'] ?></h3>
-                            <p class="invoice-ref">Từ HĐ: <?= htmlspecialchars($return['invoice_code']) ?></p>
+                            <p class="invoice-ref">Từ HĐ: <?= htmlspecialchars($return['sale_code']) ?></p>
                         </div>
                         <div class="return-amount">
                             <span class="amount"><?= number_format($return['total_amount'], 0, ',', '.') ?>đ</span>
@@ -172,7 +172,7 @@ include '../includes/header.php';
                         <option value="<?= $sale['id'] ?>" 
                                 data-customer="<?= htmlspecialchars($sale['customer_name'] ?? 'Khách lẻ') ?>"
                                 data-total="<?= $sale['total_amount'] ?>">
-                            HĐ #<?= $sale['id'] ?> - <?= $sale['invoice_code'] ?> 
+                            HĐ #<?= $sale['id'] ?> - <?= $sale['sale_code'] ?> 
                             (<?= date('d/m/Y', strtotime($sale['created_at'])) ?>) 
                             - <?= htmlspecialchars($sale['customer_name'] ?? 'Khách lẻ') ?>
                         </option>

@@ -25,7 +25,7 @@ try {
     
     // Get import details
     $stmt = $pdo->prepare("
-        SELECT id.*, p.name as product_name, p.code as product_code
+        SELECT id.*, p.name as product_name, p.product_code as product_code
         FROM import_details id
         JOIN products p ON id.product_id = p.id
         WHERE id.import_id = ?

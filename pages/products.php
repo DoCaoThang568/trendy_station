@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     switch ($action) {        case 'add_product':
-            $product_code = $_POST['code'];
+            $product_code = $_POST['product_code']; // Sửa 'code' thành 'product_code'
             $name = $_POST['name'];
             $category_id = $_POST['category_id'];
             $size = $_POST['size'];
@@ -51,7 +51,7 @@ $where = "1=1";
 $params = [];
 
 if ($search) {
-    $where .= " AND (p.name LIKE ? OR p.code LIKE ? OR c.name LIKE ?)";
+    $where .= " AND (p.name LIKE ? OR p.product_code LIKE ? OR c.name LIKE ?)"; // Sửa p.code thành p.product_code
     $searchTerm = "%$search%";
     $params = [$searchTerm, $searchTerm, $searchTerm];
 }
@@ -68,7 +68,7 @@ $products = fetchAll($sql, $params);
 $categories = fetchAll("SELECT * FROM categories ORDER BY name");
 
 // Generate new product code
-$newProductCode = generateCode('SP', 'products', 'code');
+$newProductCode = generateCode('SP', 'products', 'product_code'); // Sửa 'code' thành 'product_code'
 ?>
 
 <h1 class="page-title">📦 Quản lý Sản phẩm</h1>
@@ -107,7 +107,7 @@ $newProductCode = generateCode('SP', 'products', 'code');
             <?php else: ?>
                 <?php foreach ($products as $product): ?>
                     <tr>
-                        <td><strong><?php echo htmlspecialchars($product['code']); ?></strong></td>
+                        <td><strong><?php echo htmlspecialchars($product['product_code']); ?></strong></td> // Sửa 'code' thành 'product_code'
                         <td><?php echo htmlspecialchars($product['name']); ?></td>
                         <td>
                             <span style="background: var(--primary-color); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem;">
@@ -118,12 +118,12 @@ $newProductCode = generateCode('SP', 'products', 'code');
                         <td><?php echo htmlspecialchars($product['color']); ?></td>
                         <td><strong style="color: var(--success-color);"><?php echo number_format($product['selling_price']); ?>đ</strong></td>
                         <td>
-                            <span style="background: <?php echo $product['stock_quantity'] <= $product['min_stock'] ? 'var(--danger-color)' : 'var(--success-color)'; ?>; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem;">
+                            <span style="background: <?php echo $product['stock_quantity'] <= (isset($product['min_stock']) ? $product['min_stock'] : 0) ? 'var(--danger-color)' : 'var(--success-color)'; ?>; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem;">
                                 <?php echo $product['stock_quantity']; ?>
                             </span>
                         </td>
                         <td>
-                            <?php if ($product['status'] === 'active'): ?>
+                            <?php if ($product['is_active']): ?> // Sửa 'status' === 'active' thành 'is_active'
                                 <span style="background: var(--success-gradient); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem;">✅ Hoạt động</span>
                             <?php else: ?>
                                 <span style="background: var(--danger-gradient); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem;">❌ Ngừng bán</span>
@@ -158,8 +158,8 @@ $newProductCode = generateCode('SP', 'products', 'code');
                 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="code">Mã sản phẩm <span class="required">*</span></label>
-                        <input type="text" name="code" id="code" value="<?php echo $newProductCode; ?>" required>
+                        <label for="product_code">Mã sản phẩm <span class="required">*</span></label>
+                        <input type="text" name="product_code" id="product_code" value="<?php echo $newProductCode; ?>" required> // Sửa name và id từ 'code' thành 'product_code'
                     </div>
                     
                     <div class="form-group">
@@ -247,7 +247,7 @@ function openProductModal() {
     document.getElementById('productForm').reset();
     document.querySelector('[name="action"]').value = 'add_product';
     document.getElementById('productId').value = '';
-    document.getElementById('code').value = '<?php echo $newProductCode; ?>';
+    document.getElementById('product_code').value = '<?php echo $newProductCode; ?>';
     document.getElementById('productModal').style.display = 'block';
 }
 

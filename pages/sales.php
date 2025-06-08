@@ -103,13 +103,21 @@ $recentSales = fetchAll("
 ");
 
 // Get products for selection
-$products = fetchAll("
-    SELECT p.*, c.name as category_name 
-    FROM products p 
-    LEFT JOIN categories c ON p.category_id = c.id 
-    WHERE p.status = 'active' AND p.stock_quantity > 0
-    ORDER BY p.name
+$products_stmt = $pdo->query("
+    SELECT 
+        p.id, 
+        p.name, 
+        p.product_code, 
+        p.stock_quantity, 
+        p.selling_price, 
+        p.cost_price as import_price,
+        c.name as category_name
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.is_active = 1 AND p.stock_quantity > 0
+    ORDER BY p.name ASC
 ");
+$products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get customers for selection
 $customers = fetchAll("SELECT * FROM customers WHERE status = 'active' ORDER BY name");

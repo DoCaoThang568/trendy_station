@@ -17,7 +17,7 @@ try {
     $today_stats = $stmt->fetch();
     
     // Thống kê khách hàng
-    $stmt = $pdo->query("SELECT COUNT(*) as total_customers FROM customers WHERE status = 1");
+    $stmt = $pdo->query("SELECT COUNT(*) as total_customers FROM customers WHERE is_active = 1");
     $total_customers = $stmt->fetch()['total_customers'];
     
     // Doanh thu 7 ngày gần đây
@@ -32,12 +32,12 @@ try {
     
     // Top sản phẩm bán chạy (30 ngày)
     $stmt = $pdo->query("
-        SELECT p.product_name, SUM(sd.quantity) as total_sold, SUM(sd.quantity * sd.unit_price) as revenue
+        SELECT p.name as product_name, SUM(sd.quantity) as total_sold, SUM(sd.quantity * sd.unit_price) as revenue
         FROM sale_details sd
-        JOIN products p ON sd.product_id = p.product_id
-        JOIN sales s ON sd.sale_id = s.sale_id
+        JOIN products p ON sd.product_id = p.id
+        JOIN sales s ON sd.sale_id = s.id
         WHERE s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-        GROUP BY p.product_id, p.product_name
+        GROUP BY p.name
         ORDER BY total_sold DESC
         LIMIT 5
     ");

@@ -25,7 +25,7 @@ if (!$sale) {
 
 // Get sale details
 $saleDetails = fetchAll("
-    SELECT sd.*, p.code as product_code, p.unit 
+    SELECT sd.*, p.product_code as product_code, p.unit 
     FROM sale_details sd 
     LEFT JOIN products p ON sd.product_id = p.id 
     WHERE sd.sale_id = ? 
