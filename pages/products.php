@@ -7,22 +7,21 @@
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
-    switch ($action) {
-        case 'add_product':
-            $code = $_POST['code'];
+    switch ($action) {        case 'add_product':
+            $product_code = $_POST['code'];
             $name = $_POST['name'];
             $category_id = $_POST['category_id'];
             $size = $_POST['size'];
             $color = $_POST['color'];
-            $purchase_price = $_POST['purchase_price'];
+            $cost_price = $_POST['purchase_price'];
             $selling_price = $_POST['selling_price'];
             $stock_quantity = $_POST['stock_quantity'];
             $description = $_POST['description'];
             
             try {
-                $sql = "INSERT INTO products (code, name, category_id, size, color, purchase_price, selling_price, stock_quantity, description) 
+                $sql = "INSERT INTO products (product_code, name, category_id, size, color, cost_price, selling_price, stock_quantity, description) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                executeQuery($sql, [$code, $name, $category_id, $size, $color, $purchase_price, $selling_price, $stock_quantity, $description]);
+                executeQuery($sql, [$product_code, $name, $category_id, $size, $color, $cost_price, $selling_price, $stock_quantity, $description]);
                 $_SESSION['success_message'] = 'Thêm sản phẩm thành công!';
             } catch (Exception $e) {
                 $_SESSION['error_message'] = 'Lỗi: ' . $e->getMessage();
