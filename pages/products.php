@@ -244,7 +244,7 @@ $newProductCode = generateCode('SP', 'products', 'product_code');
 </div>
 
 <!-- Modal Thêm/Sửa sản phẩm -->
-<div id="productModal" class="modal" style="display: none; opacity: 0; transition: opacity 0.3s ease;">
+<div id="productModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTitle">➕ Thêm sản phẩm mới</h3>
@@ -423,31 +423,37 @@ document.getElementById('productSearch').addEventListener('keydown', function(e)
 
 // Open product modal
 function openProductModal() {
-    document.getElementById('modalTitle').textContent = '➕ Thêm sản phẩm mới';
-    document.getElementById('productForm').reset();
-    document.querySelector('[name="action"]').value = 'add_product';
-    document.getElementById('productId').value = '';
-    document.getElementById('product_code').value = '<?php echo $newProductCode; ?>'; // Ensure new product code is set
-    // Ensure is_active checkbox is present and set to a default (e.g., checked for new products)
+    const modal = document.getElementById('productModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const productForm = document.getElementById('productForm');
+    const actionInput = document.querySelector('[name="action"]');
+    const productId = document.getElementById('productId');
+    const productCode = document.getElementById('product_code');
+    
+    // Reset form and set for adding new product
+    if (productForm) productForm.reset();
+    if (modalTitle) modalTitle.textContent = '➕ Thêm sản phẩm mới';
+    if (actionInput) actionInput.value = 'add_product';
+    if (productId) productId.value = '';
+    if (productCode) productCode.value = '<?php echo $newProductCode; ?>';
+    
+    // Set default values for new product
     const isActiveCheckbox = document.getElementById('is_active');
     if (isActiveCheckbox) {
         isActiveCheckbox.checked = true;
-        document.getElementById('is_active_label').style.display = 'none'; // Hide for new products
+        const isActiveLabel = document.getElementById('is_active_label');
+        if (isActiveLabel) isActiveLabel.style.display = 'none';
     }
     
-    // Show modal with fade effect
-    const modal = document.getElementById('productModal');
-    modal.style.display = 'block';
-    modal.style.opacity = '0';
-    setTimeout(() => {
-        modal.style.opacity = '1';
-        modal.style.transition = 'opacity 0.3s ease';
-    }, 10);
-    
-    // Focus on the first input field after a short delay
-    setTimeout(() => {
-        document.getElementById('name').focus();
-    }, 100);
+    // Show modal
+    if (modal) {
+        modal.style.display = 'block';
+        // Focus first input
+        setTimeout(() => {
+            const nameField = document.getElementById('name');
+            if (nameField) nameField.focus();
+        }, 100);
+    }
 }
 
 // Edit product
@@ -555,13 +561,7 @@ async function deleteProduct(id, name) {
 
 // Close modal
 function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    modal.style.transition = 'opacity 0.3s ease';
-    modal.style.opacity = '0';
-    setTimeout(() => {
-        modal.style.display = 'none';
-        modal.style.opacity = '1'; // Reset for next time
-    }, 300);
+    document.getElementById(modalId).style.display = 'none';
 }
 
 // Close modal when clicking outside
@@ -756,79 +756,79 @@ function formatNumber(num) {
     return new Intl.NumberFormat('vi-VN').format(num);
 }
 
-// Handle form submission with AJAX
-document.getElementById('productForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    const action = document.querySelector('[name="action"]').value;
-    const productId = document.getElementById('productId').value;
-    
-    // Show loading state
-    submitBtn.disabled = true;
-    submitBtn.textContent = '💾 Đang lưu...';
-    
-    try {
-        const formData = new FormData(this);
-        formData.append('ajax', '1'); // Add AJAX flag
-        
-        const response = await fetch('index.php?page=products', {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            
-            if (result.success) {
-                showToast(result.message, 'success');
-                closeModal('productModal');
-                  // Update the table instead of reloading the page
-                if (action === 'add_product') {
-                    // For new products, use the returned product ID to update the table
-                    if (result.product_id) {
+// Ensure modal is hidden on page load and setup form handler
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('productModal');
+    if (modal) {
+        modal.style.display = 'none';
+        // console.log('Modal hidden on page load'); // Optional: for debugging
+    } else {
+        // console.error('Modal not found on page load'); // Optional: for debugging
+    }
+
+    const productForm = document.getElementById('productForm');
+    if (productForm) {
+        // console.log('Setting up form submission handler'); // Optional: for debugging
+        productForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            const action = document.querySelector('[name="action"]').value;
+            const productIdValue = document.getElementById('productId').value; // Renamed to avoid conflict with productId in outer scope if any
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '💾 Đang lưu...';
+
+            try {
+                const formData = new FormData(this);
+                formData.append('ajax', '1');
+
+                const response = await fetch('index.php?page=products', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    closeModal('productModal');
+
+                    // Update the table or reload
+                    if (action === 'add_product' && result.product_id) {
                         const updated = await updateProductRow(result.product_id);
                         if (!updated) {
-                            // Fallback to reload if update failed
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1000);
+                             // Fallback to reload if live update fails or is not preferred for simplicity
+                            location.reload();
+                        }
+                    } else if (action === 'edit_product' && productIdValue) {
+                        const updated = await updateProductRow(productIdValue);
+                        if (!updated) {
+                            location.reload();
                         }
                     } else {
-                        // Fallback to reload if no product ID returned
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
+                        // General fallback if specific conditions not met
+                        location.reload();
                     }
-                } else if (action === 'edit_product' && productId) {
-                    // For edited products, update the specific row
-                    const updated = await updateProductRow(productId);
-                    if (!updated) {
-                        // Fallback to reload if update failed
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
-                    }
+                } else {
+                    showToast(result.message || 'Có lỗi xảy ra.', 'error');
                 }
-            } else {
-                showToast(result.message, 'error');
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                showToast('Có lỗi xảy ra khi lưu dữ liệu: ' + error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
-        } else {
-            throw new Error('HTTP error! status: ' + response.status);
-        }
-        
-    } catch (error) {
-        console.error('Error submitting form:', error);
-        showToast('Có lỗi xảy ra khi lưu dữ liệu: ' + error.message, 'error');
-    } finally {
-        // Restore button state
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;    }
-});
-
-// Ensure modal is hidden on page load
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('productModal').style.display = 'none';
+        });
+    } else {
+        // console.error('Product form not found on page load'); // Optional: for debugging
+    }
 });
 </script>
