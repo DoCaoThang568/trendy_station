@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/functions.php'; // Include the new functions file
 /**
  * Imports Page - Nhập hàng & Quản lý kho
  */
@@ -828,4 +829,11 @@ document.addEventListener('DOMContentLoaded', function() {
     addItemRow();
     showToast('💡 Phím tắt: F2 (Tìm SP), F3 (Thêm SP), Ctrl+Enter (Lưu), Ctrl+R (Reset)', 'info');
 });
+
+// Format date function
+if (!function_exists('formatDate')) {
+    function formatDate($dateString) {
+        return date('d/m/Y H:i', strtotime($dateString));
+    }
+}
 </script>

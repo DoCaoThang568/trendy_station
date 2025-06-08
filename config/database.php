@@ -26,38 +26,7 @@ try {
     $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
     
 } catch (PDOException $e) {
-    error_log("CRITICAL: Database connection failed in database.php - " . $e->getMessage());
-
-    // Kiểm tra xem đây có phải là một yêu cầu AJAX không
-    $is_ajax_request = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') 
-                       || (isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'application/json') !== false)
-                       || isset($_POST['action']); // Heuristic dựa trên cách ứng dụng này gọi AJAX
-
-    if ($is_ajax_request) {
-        if (!headers_sent()) {
-            header('Content-Type: application/json');
-            // Thêm các header để trình duyệt không cache lỗi này
-            header('Cache-Control: no-cache, must-revalidate');
-            header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
-        }
-        // Xuất lỗi JSON và thoát
-        echo json_encode([
-            'success' => false,
-            'message' => 'Lỗi nghiêm trọng: Không thể kết nối đến cơ sở dữ liệu. Vui lòng liên hệ quản trị viên. (Code: DBCONNFAIL_AJAX)'
-        ]);
-        exit;
-    } else {
-        // Đối với các yêu cầu không phải AJAX, hiển thị thông báo lỗi HTML đơn giản
-        echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Lỗi Cơ Sở Dữ Liệu</title><style>body{font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; color: #333;} .error-container{max-width: 600px; margin: 50px auto; padding: 20px; background-color: #fff; border: 1px solid #ddd; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center;} h1{color: #d9534f;}</style></head><body>";
-        echo "<div class='error-container'>";
-        echo "<h1>Lỗi Kết Nối Cơ Sở Dữ Liệu</h1>";
-        echo "<p>Hiện tại không thể thiết lập kết nối đến cơ sở dữ liệu. Điều này có thể do máy chủ cơ sở dữ liệu đang gặp sự cố hoặc cấu hình không chính xác.</p>";
-        echo "<p>Vui lòng thử lại sau ít phút. Nếu sự cố vẫn tiếp diễn, xin vui lòng liên hệ với quản trị viên hệ thống.</p>";
-        // Không nên hiển thị $e->getMessage() trực tiếp cho người dùng cuối trong môi trường production
-        // error_log("Database connection failed (Non-AJAX): " . $e->getMessage()); // Ghi log chi tiết
-        echo "</div></body></html>";
-        exit;
-    }
+    die('Database connection failed: ' . $e->getMessage());
 }
 
 /**
@@ -70,10 +39,7 @@ function executeQuery($sql, $params = []) {
         $stmt->execute($params);
         return $stmt;
     } catch (PDOException $e) {
-        // Log lỗi để debug
-        error_log("SQL Error: " . $e->getMessage() . " | Query: " . $sql);
-        // Ném lại exception để code gọi có thể xử lý
-        throw $e;
+        die("❌ Lỗi thực hiện query: " . $e->getMessage());
     }
 }
 
@@ -94,23 +60,16 @@ function fetchOne($sql, $params = []) {
 }
 
 /**
- * Function định dạng ngày tháng
+ * Function đếm số records
  */
-function formatDate($dateString, $format = 'd/m/Y H:i:s') {
-    if (!$dateString) {
-        return null;
-    }
-    try {
-        $date = new DateTime($dateString);
-        return $date->format($format);
-    } catch (Exception $e) {
-        // Trả về chuỗi gốc nếu không parse được
-        return $dateString;
-    }
+function countRecords($table, $where = '1=1', $params = []) {
+    $sql = "SELECT COUNT(*) as total FROM $table WHERE $where";
+    $result = fetchOne($sql, $params);
+    return $result['total'];
 }
 
 /**
- * Function tạo mã tự động (VD: HD001, SP001)
+ * Function tạo mã code tự động
  */
 function generateCode($prefix, $table, $column) {
     $sql = "SELECT MAX(CAST(SUBSTRING($column, " . (strlen($prefix) + 1) . ") AS UNSIGNED)) as max_num 
@@ -119,14 +78,6 @@ function generateCode($prefix, $table, $column) {
     $result = fetchOne($sql);
     $nextNum = ($result['max_num'] ?? 0) + 1;
     return $prefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
-}
-
-/**
- * Function lấy ID của record vừa được insert
- */
-function getLastInsertId() {
-    global $pdo;
-    return $pdo->lastInsertId();
 }
 
 // Test kết nối

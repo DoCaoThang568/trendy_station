@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/functions.php'; // Include the functions file
 /**
  * Sales Page - Bán hàng & Lập hóa đơn
  */
