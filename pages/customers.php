@@ -1,1166 +1,797 @@
-<?php
-require_once 'config/database.php';
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Khách hàng</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --purple-color: #6f42c1;
+            --card-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            --hover-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            --border-radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-// Xử lý AJAX requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    header('Content-Type: application/json');
-    
-    $action = $_POST['action'] ?? '';
-    
-    switch ($action) {
-        case 'add_customer':
-            $name = trim($_POST['name'] ?? '');
-            $phone = trim($_POST['phone'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $address = trim($_POST['address'] ?? '');
-            $gender = $_POST['gender'] ?? 'Khác';
-            $birth_date = $_POST['birth_date'] ?? null;
-            $is_active_val = 1; // Mặc định là active khi thêm mới
-            $notes = trim($_POST['notes'] ?? '');
-            
-            // Validation
-            if (empty($name) || empty($phone)) {
-                echo json_encode(['success' => false, 'message' => 'Vui lòng nhập đầy đủ tên và số điện thoại!']);
-                exit;
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .customers-page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* Header Section */
+        .page-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: #6c757d;
+            font-size: 1.1rem;
+            margin-bottom: 0;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 1.8rem;
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 70px;
+            height: 70px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.3rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .stat-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            opacity: 0.95;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* Filters Section */
+        .filters-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .search-input-wrapper {
+            position: relative;
+        }
+
+        .search-input-wrapper .form-control {
+            padding-left: 3rem;
+            border-radius: 25px;
+            border: 2px solid #e9ecef;
+            transition: var(--transition);
+            height: 45px;
+        }
+
+        .search-input-wrapper .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .search-input-wrapper .input-group-text {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            z-index: 5;
+            color: #6c757d;
+        }
+
+        .filter-select {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: var(--transition);
+            height: 45px;
+        }
+
+        .filter-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .btn-filter {
+            height: 45px;
+            padding: 0 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .btn-filter:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Customer Cards Grid */
+        .customers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .customer-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-left: 4px solid transparent;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .customer-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .customer-card[data-membership="vip"] {
+            border-left-color: var(--warning-color);
+        }
+
+        .customer-card[data-membership="vvip"] {
+            border-left-color: var(--purple-color);
+        }
+
+        .customer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .customer-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+        }
+
+        .customer-code {
+            font-size: 0.85rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .customer-actions .dropdown-toggle {
+            border: none;
+            background: rgba(108, 117, 125, 0.1);
+            color: #6c757d;
+            border-radius: 8px;
+            padding: 0.5rem;
+            transition: var(--transition);
+        }
+
+        .customer-actions .dropdown-toggle:hover {
+            background: rgba(108, 117, 125, 0.2);
+            transform: scale(1.1);
+        }
+
+        .customer-details {
+            margin-bottom: 1rem;
+            flex: 1;
+        }
+
+        .detail-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+
+        .detail-item i {
+            width: 20px;
+            margin-right: 0.5rem;
+            opacity: 0.7;
+        }
+
+        .detail-item .badge {
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+        }
+
+        .bg-purple {
+            background-color: var(--purple-color) !important;
+            color: white;
+        }
+
+        .customer-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, #e9ecef 50%, transparent 100%);
+            margin: 1rem 0;
+        }
+
+        .customer-finance {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .finance-item {
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .finance-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
+        .finance-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .last-order {
+            font-size: 0.85rem;
+            color: #6c757d;
+            text-align: center;
+            padding: 0.5rem;
+            background: rgba(23, 162, 184, 0.05);
+            border-radius: 6px;
+            border: 1px solid rgba(23, 162, 184, 0.1);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            color: #6c757d;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-text {
+            color: #6c757d;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Pagination */
+        .pagination-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .pagination .page-link {
+            border: none;
+            padding: 0.75rem 1rem;
+            margin: 0 0.25rem;
+            border-radius: 8px;
+            color: #6c757d;
+            transition: var(--transition);
+        }
+
+        .pagination .page-link:hover {
+            background: var(--primary-gradient);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .pagination .page-item.active .page-link {
+            background: var(--primary-gradient);
+            border: none;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .pagination-info {
+            text-align: center;
+            margin-top: 1rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        /* Modal Improvements */
+        .modal-content {
+            border-radius: var(--border-radius);
+            border: none;
+            box-shadow: var(--hover-shadow);
+        }
+
+        .modal-header {
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        }
+
+        .modal-title {
+            font-weight: 700;
+        }
+
+        .btn-close {
+            filter: brightness(0) invert(1);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .customers-page {
+                padding: 1rem 0.5rem;
             }
             
-            // Check phone exists
-            $check_sql = "SELECT id FROM customers WHERE phone = ?";
-            $check_stmt = $pdo->prepare($check_sql);
-            $check_stmt->execute([$phone]);
-            if ($check_stmt->rowCount() > 0) {
-                echo json_encode(['success' => false, 'message' => 'Số điện thoại đã tồn tại!']);
-                exit;
+            .page-header {
+                padding: 1.5rem;
             }
             
-            // Generate customer code
-            $code_sql = "SELECT MAX(CAST(SUBSTRING(customer_code, 3) AS UNSIGNED)) as max_num FROM customers WHERE customer_code LIKE 'KH%'";
-            $code_result = $pdo->query($code_sql);
-            $max_num = $code_result->fetch()['max_num'] ?? 0;
-            $customer_code = 'KH' . str_pad($max_num + 1, 3, '0', STR_PAD_LEFT);
-            
-            // Insert customer
-            $sql = "INSERT INTO customers (customer_code, name, phone, email, address, gender, birth_date, notes, is_active) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            $stmt = $pdo->prepare($sql);
-            
-            try {
-                $stmt->execute([$customer_code, $name, $phone, $email, $address, $gender, $birth_date, $notes, $is_active_val]);
-                echo json_encode(['success' => true, 'message' => "Thêm khách hàng $customer_code thành công!"]);
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
-            }
-            exit;
-            
-        case 'update_customer':
-            $id = $_POST['id'] ?? 0;
-            $name = trim($_POST['name'] ?? '');
-            $phone = trim($_POST['phone'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $address = trim($_POST['address'] ?? '');
-            $gender = $_POST['gender'] ?? 'Khác';
-            $birth_date = $_POST['birth_date'] ?? null;
-            $status_from_post = $_POST['status'] ?? 'active'; // Giữ nguyên cách nhận từ form
-            $is_active_val = ($status_from_post === 'active') ? 1 : 0; // Chuyển đổi sang 0/1
-            $notes = trim($_POST['notes'] ?? '');
-            
-            if (empty($name) || empty($phone) || !$id) {
-                echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ!']);
-                exit;
+            .page-title {
+                font-size: 2rem;
             }
             
-            // Check phone exists (except current customer)
-            $check_sql = "SELECT id FROM customers WHERE phone = ? AND id != ?";
-            $check_stmt = $pdo->prepare($check_sql);
-            $check_stmt->execute([$phone, $id]);
-            if ($check_stmt->rowCount() > 0) {
-                echo json_encode(['success' => false, 'message' => 'Số điện thoại đã tồn tại!']);
-                exit;
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
             }
             
-            $sql = "UPDATE customers SET name=?, phone=?, email=?, address=?, gender=?, birth_date=?, is_active=?, notes=? WHERE id=?";
-            $stmt = $pdo->prepare($sql);
-            
-            try {
-                $stmt->execute([$name, $phone, $email, $address, $gender, $birth_date, $is_active_val, $notes, $id]);
-                echo json_encode(['success' => true, 'message' => 'Cập nhật khách hàng thành công!']);
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
-            }
-            exit;
-            
-        case 'delete_customer':
-            $id = $_POST['id'] ?? 0;
-            if (!$id) {
-                echo json_encode(['success' => false, 'message' => 'ID khách hàng không hợp lệ!']);
-                exit;
+            .stat-card {
+                padding: 1.5rem;
             }
             
-            try {
-                $sql = "DELETE FROM customers WHERE id = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([$id]);
-                echo json_encode(['success' => true, 'message' => 'Xóa khách hàng thành công!']);
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
-            }
-            exit;
-            
-        case 'get_customer':
-            $id = $_POST['id'] ?? 0;
-            if (!$id) {
-                echo json_encode(['success' => false, 'message' => 'ID không hợp lệ!']);
-                exit;
+            .customers-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
             }
             
-            $sql = "SELECT * FROM customers WHERE id = ?";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$id]);
-            $customer = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($customer) {
-                echo json_encode(['success' => true, 'data' => $customer]);
-            } else {
-                echo json_encode(['success' => false, 'message' => 'Không tìm thấy khách hàng!']);
+            .filters-section .row {
+                gap: 1rem;
             }
-            exit;
-    }
-}
-
-// Lấy danh sách khách hàng với tìm kiếm và phân trang
-$search = $_GET['search'] ?? '';
-$status_filter = $_GET['status'] ?? '';
-$membership_filter = $_GET['membership'] ?? '';
-$page = max(1, intval($_GET['page'] ?? 1));
-$per_page = 12;
-$offset = ($page - 1) * $per_page;
-
-// Build query
-$where_clauses = [];
-$params = [];
-
-if ($search) {
-    $where_clauses[] = "(name LIKE ? OR phone LIKE ? OR email LIKE ? OR customer_code LIKE ?)";
-    $search_param = "%$search%";
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-}
-
-if ($status_filter && $status_filter !== 'all') {
-    $where_clauses[] = "is_active = ?"; //Sửa status thành is_active
-    $params[] = ($status_filter === 'active') ? 1 : 0; // Chuyển đổi active/inactive thành 1/0
-}
-
-if ($membership_filter && $membership_filter !== 'all') {
-    $where_clauses[] = "membership_level = ?";
-    $params[] = $membership_filter;
-}
-
-$where_sql = $where_clauses ? 'WHERE ' . implode(' AND ', $where_clauses) : '';
-
-// Count total
-$count_sql = "SELECT COUNT(*) FROM customers $where_sql";
-$count_stmt = $pdo->prepare($count_sql);
-$count_stmt->execute($params);
-$total_customers = $count_stmt->fetchColumn();
-$total_pages = ceil($total_customers / $per_page);
-
-// Get customers
-$sql = "SELECT c.*, 
-        s.latest_sale_date as last_order_date, /* Get last order date from subquery */
-        CASE 
-            WHEN s.latest_sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 'Hoạt động'
-            WHEN s.latest_sale_date >= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN 'Ít hoạt động'
-            ELSE 'Lâu không mua'
-        END as activity_status,
-        DATEDIFF(NOW(), s.latest_sale_date) as days_since_last_order,
-        YEAR(NOW()) - YEAR(c.birth_date) as age
-        FROM customers c
-        LEFT JOIN (
-            SELECT customer_id, MAX(sale_date) as latest_sale_date 
-            FROM sales 
-            GROUP BY customer_id
-        ) s ON c.id = s.customer_id
-        $where_sql 
-        ORDER BY c.total_spent DESC, c.created_at DESC 
-        LIMIT $per_page OFFSET $offset";
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Thống kê nhanh
-$stats_sql = "SELECT 
-    COUNT(*) as total_customers,
-    COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_customers,
-    COUNT(CASE WHEN membership_level = 'VIP' THEN 1 END) as vip_customers,
-    COUNT(CASE WHEN membership_level = 'VVIP' THEN 1 END) as vvip_customers,
-    SUM(total_spent) as total_revenue,
-    AVG(total_spent) as avg_spent
-    FROM customers";
-$stats_stmt = $pdo->query($stats_sql);
-$stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
-?>
-
-<style>
-/* Customers Page Styles */
-.customers-page {
-    padding: 0;
-}
-
-.stat-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 1rem; /* Reduced padding */
-    border-radius: 10px; /* Slightly smaller border radius */
-    display: flex;
-    align-items: center;
-    gap: 0.75rem; /* Reduced gap */
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    transition: transform 0.2s;
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-}
-
-.stat-icon {
-    font-size: 1.8rem; /* Increased icon size */
-    background-color: rgba(255, 255, 255, 0.15); /* Slightly more opaque background */
-    border-radius: 8px;
-    padding: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5); /* Added text shadow for icon */
-}
-
-.stat-info {
-    /* Added for better structure if needed, or can be merged */
-}
-
-.stat-number {
-    font-size: 1.4rem; /* Increased font size */
-    font-weight: bold;
-    margin-bottom: 0.15rem;
-    color: #FFFFFF; /* Explicit white color */
-    text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.4); /* Added text shadow */
-}
-
-.stat-card .stat-label { /* Made selector more specific */
-    opacity: 1; /* Fully opaque */
-    font-size: 0.85rem; /* Increased font size */
-    font-weight: 700;   /* Bold font weight */
-    color: #FFFFFF !important; /* Forced white color for diagnosis */
-    text-shadow: 0px 1px 1px rgba(0,0,0,0.7); /* Sharper, slightly offset dark shadow for contrast */
-}
-
-.search-box {
-    position: relative;
-}
-
-.search-box input {
-    padding-left: 2.5rem;
-    border-radius: 25px;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s;
-}
-
-.search-box input:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-}
-
-.customers-grid .empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: #6c757d;
-}
-
-.empty-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-}
-
-.customer-card {
-    background: white;
-    border-radius: 15px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    transition: all 0.3s;
-    overflow: hidden;
-    border: 2px solid transparent;
-}
-
-.customer-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-}
-
-.customer-card[data-membership="VIP"] {
-    border-color: #f59e0b;
-}
-
-.customer-card[data-membership="VVIP"] {
-    border-color: #8b5cf6;
-    background: linear-gradient(145deg, #fafafa 0%, #f3f0ff 100%);
-}
-
-.customer-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex: 1;
-}
-
-.header-right .btn {
-    border: none;
-    background: transparent;
-    color: #6b7280;
-    padding: 0.5rem;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-}
-
-.header-right .btn:hover {
-    background: #f3f4f6;
-    color: #374151;
-}
-
-.customer-avatar {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 1.1rem;
-}
-
-.customer-basic {
-    flex: 1;
-}
-
-.customer-name {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #2d3748;
-}
-
-.customer-code {
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-.customer-contact {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.contact-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-    font-size: 0.9rem;
-}
-
-.contact-item:last-child {
-    margin-bottom: 0;
-}
-
-.contact-item i {
-    width: 16px;
-    font-size: 0.9rem;
-}
-
-.customer-stats {
-    padding: 1rem 1.5rem;
-    display: flex;
-    gap: 1rem;
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.stat-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex: 1;
-    padding: 0.75rem;
-    background: #f8fafc;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-}
-
-.stat-icon {
-    width: 32px;
-    height: 32px;
-    background: white;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    flex-shrink: 0;
-}
-
-.stat-content {
-    flex: 1;
-}
-
-.stat-value {
-    font-weight: 600;
-    color: #1f2937;
-    font-size: 0.95rem;
-    line-height: 1;
-}
-
-.stat-label {
-    font-size: 0.7rem;
-    color: #6b7280;
-    margin-top: 0.25rem;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-}
-
-.customer-badges {
-    padding: 1rem 1.5rem;
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.badge {
-    font-size: 0.75rem;
-    font-weight: 500;
-    padding: 0.4rem 0.8rem;
-    border-radius: 20px;
-}
-
-.membership-badge.membership-vvip {
-    background: linear-gradient(135deg, #8b5cf6, #a855f7);
-    color: white;
-}
-
-.membership-badge.membership-vip {
-    background: linear-gradient(135deg, #f59e0b, #f97316);
-    color: white;
-}
-
-.membership-badge.membership-thông-thường {
-    background: #6b7280;
-    color: white;
-}
-
-.activity-badge.activity-hoạt-động {
-    background: #10b981;
-    color: white;
-}
-
-.activity-badge.activity-ít-hoạt-động {
-    background: #f59e0b;
-    color: white;
-}
-
-.activity-badge.activity-lâu-không-mua {
-    background: #ef4444;
-    color: white;
-}
-
-.last-order {
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    background: #f9fafb;
-}
-
-.last-order-icon {
-    width: 24px;
-    height: 24px;
-    background: white;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #e5e7eb;
-    flex-shrink: 0;
-}
-
-.last-order-content {
-    flex: 1;
-}
-
-.last-order-date {
-    font-size: 0.85rem;
-    color: #374151;
-    font-weight: 500;
-    line-height: 1;
-}
-
-.last-order-days {
-    font-size: 0.75rem;
-    color: #6b7280;
-    margin-top: 0.25rem;
-}
-
-.pagination-nav {
-    margin-top: 2rem;
-}
-
-.pagination-info {
-    text-align: center;
-    margin-top: 1rem;
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-/* Modal improvements */
-.modal-content {
-    border-radius: 15px;
-    border: none;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-}
-
-.modal-header {
-    border-bottom: 2px solid #f8f9fa;
-    padding: 1.5rem;
-}
-
-.form-control, .form-select {
-    border-radius: 8px;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s;
-}
-
-.form-control:focus, .form-select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-}
-
-/* Visually hidden class for screen readers and alignment */
-.visually-hidden,
-.visually-hidden-focusable:not(:focus):not(:focus-within) {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .stat-card {
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .customer-card {
-        margin-bottom: 1rem;
-    }
-    
-    .filters-section .row > div {
-        margin-bottom: 0.5rem;
-    }
-}
-</style>
-
-<div class="customers-page">
-    <!-- Header với thống kê -->
-    <div class="page-header">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2>👥 Quản Lý Khách Hàng</h2>
-                <p class="text-muted mb-0">Quản lý thông tin và theo dõi hoạt động khách hàng</p>
+            
+            .detail-row {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .customer-card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .customer-card:nth-child(even) {
+            animation-delay: 0.1s;
+        }
+
+        .customer-card:nth-child(3n) {
+            animation-delay: 0.2s;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            border-radius: 8px;
+            border: none;
+            box-shadow: var(--card-shadow);
+        }
+    </style>
+</head>
+<body>
+    <div class="customers-page">
+        <!-- Header với thống kê -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="page-title">👥 Quản Lý Khách Hàng</h1>
+                    <p class="page-subtitle">Quản lý thông tin và theo dõi hoạt động khách hàng</p>
+                </div>
+                <button class="btn btn-primary btn-lg" onclick="openAddCustomerModal()">
+                    <i class="fas fa-plus me-2"></i>Thêm Khách Hàng
+                    <kbd class="ms-2">F1</kbd>
+                </button>
             </div>
-            <button class="btn btn-primary" onclick="openAddCustomerModal()">
-                <i class="fas fa-plus"></i> Thêm Khách Hàng <kbd>F1</kbd>
-            </button>
-        </div>
 
-        <!-- Thống kê nhanh -->
-        <div class="row mb-4">
-            <div class="col-md-3">
+            <!-- Thống kê nhanh -->
+            <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">👥</div>
                     <div class="stat-info">
-                        <div class="stat-number"><?php echo number_format($stats['total_customers']); ?></div>
+                        <div class="stat-number">1,247</div>
                         <div class="stat-label">Tổng khách hàng</div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-3">
                 <div class="stat-card">
                     <div class="stat-icon">✨</div>
                     <div class="stat-info">
-                        <div class="stat-number"><?php echo number_format($stats['vip_customers'] + $stats['vvip_customers']); ?></div>
+                        <div class="stat-number">156</div>
                         <div class="stat-label">VIP + VVIP</div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-3">
                 <div class="stat-card">
                     <div class="stat-icon">💰</div>
                     <div class="stat-info">
-                        <div class="stat-number"><?php echo number_format($stats['total_revenue']); ?>đ</div>
+                        <div class="stat-number">2,450,000đ</div>
                         <div class="stat-label">Tổng doanh thu</div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-3">
                 <div class="stat-card">
                     <div class="stat-icon">📊</div>
                     <div class="stat-info">
-                        <div class="stat-number"><?php echo number_format($stats['avg_spent']); ?>đ</div>
+                        <div class="stat-number">185,000đ</div>
                         <div class="stat-label">Chi tiêu trung bình</div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Bộ lọc và tìm kiếm -->
-    <div class="filters-section mb-4">
-        <form class="row g-3 align-items-end" id="filterForm">
-            <div class="col-md">
-                <label for="searchInput" class="visually-hidden">Tìm kiếm</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                    <input type="text" id="searchInput" class="form-control" 
-                           placeholder="Tìm kiếm khách hàng... (F2)" value="<?php echo htmlspecialchars($search); ?>">
-                </div>
-            </div>
-            <div class="col-md-auto">
-                <label for="statusFilter" class="visually-hidden">Trạng thái</label>
-                <select id="statusFilter" class="form-select">
-                    <option value="all">Tất cả trạng thái</option>
-                    <option value="active" <?php echo $status_filter === 'active' ? 'selected' : ''; ?>>Hoạt động</option>
-                    <option value="inactive" <?php echo $status_filter === 'inactive' ? 'selected' : ''; ?>>Không hoạt động</option>
-                </select>
-            </div>
-            <div class="col-md-auto">
-                <label for="membershipFilter" class="visually-hidden">Hạng</label>
-                <select id="membershipFilter" class="form-select">
-                    <option value="all">Tất cả hạng</option>
-                    <option value="Thông thường" <?php echo $membership_filter === 'Thông thường' ? 'selected' : ''; ?>>Thông thường</option>
-                    <option value="VIP" <?php echo $membership_filter === 'VIP' ? 'selected' : ''; ?>>VIP</option>
-                    <option value="VVIP" <?php echo $membership_filter === 'VVIP' ? 'selected' : ''; ?>>VVIP</option>
-                </select>
-            </div>
-            <div class="col-md-auto">
-                <button type="button" class="btn btn-primary" onclick="applyFiltersAndSubmit()">
-                    <i class="fas fa-filter"></i> Lọc
-                </button>
-            </div>
-            <div class="col-md-auto">
-                <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()" title="Reset Filters">
-                    <i class="fas fa-undo"></i>
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Danh sách khách hàng -->
-    <div class="customers-grid">
-        <?php if (empty($customers)): ?>
-            <div class="empty-state">
-                <div class="empty-icon">👥</div>
-                <h4>Chưa có khách hàng nào</h4>
-                <p>Hãy thêm khách hàng đầu tiên để bắt đầu!</p>
-                <button class="btn btn-primary" onclick="openAddCustomerModal()">
-                    <i class="fas fa-plus"></i> Thêm Khách Hàng
-                </button>
-            </div>
-        <?php else: ?>
-            <div class="row">
-                <?php foreach ($customers as $customer): ?>
-                    <div class="col-md-6 col-lg-4 mb-4">                        <div class="customer-card" data-membership="<?php echo $customer['membership_level']; ?>">
-                            <!-- Header với avatar và thông tin cơ bản -->
-                            <div class="customer-header">
-                                <div class="header-left">
-                                    <div class="customer-avatar">
-                                        <?php echo strtoupper(substr($customer['name'], 0, 2)); ?>
-                                    </div>
-                                    <div class="customer-basic">
-                                        <h5 class="customer-name"><?php echo htmlspecialchars($customer['name']); ?></h5>
-                                        <span class="customer-code"><?php echo $customer['customer_code']; ?></span>
-                                    </div>
-                                </div>
-                                <div class="header-right">
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm dropdown-toggle" data-bs-toggle="dropdown">
-                                            <i class="fas fa-ellipsis-h"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item" href="#" onclick="editCustomer(<?php echo $customer['id']; ?>)">
-                                                <i class="fas fa-edit"></i> Sửa thông tin</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="viewCustomerDetail(<?php echo $customer['id']; ?>)">
-                                                <i class="fas fa-eye"></i> Xem chi tiết</a></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteCustomer(<?php echo $customer['id']; ?>, '<?php echo htmlspecialchars($customer['name']); ?>')">
-                                                <i class="fas fa-trash"></i> Xóa khách hàng</a></li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Thông tin liên lạc -->
-                            <div class="customer-contact">
-                                <div class="contact-item">
-                                    <i class="fas fa-phone text-primary"></i>
-                                    <span><?php echo $customer['phone']; ?></span>
-                                </div>
-                                <?php if ($customer['email']): ?>
-                                <div class="contact-item">
-                                    <i class="fas fa-envelope text-success"></i>
-                                    <span><?php echo htmlspecialchars($customer['email']); ?></span>
-                                </div>
-                                <?php endif; ?>
-                                <div class="contact-item">
-                                    <i class="fas fa-birthday-cake text-warning"></i>
-                                    <span><?php echo $customer['age'] ? $customer['age'] . ' tuổi' : 'Chưa có'; ?></span>
-                                </div>
-                            </div>
-
-                            <!-- Badges hạng thành viên và trạng thái -->
-                            <div class="customer-badges">
-                                <span class="badge membership-badge membership-<?php echo strtolower($customer['membership_level']); ?>">
-                                    <?php 
-                                    echo $customer['membership_level'] === 'VVIP' ? '👑 VVIP' : 
-                                         ($customer['membership_level'] === 'VIP' ? '⭐ VIP' : '👤 Thông thường'); 
-                                    ?>
-                                </span>
-                                <span class="badge activity-badge activity-<?php echo str_replace(' ', '-', strtolower($customer['activity_status'])); ?>">
-                                    <?php echo $customer['activity_status']; ?>
-                                </span>
-                                <?php if (isset($customer['is_active']) && $customer['is_active'] == 0): ?>
-                                    <span class="badge bg-secondary">Không hoạt động</span>
-                                <?php endif; ?>
-                            </div>
-
-                            <!-- Thống kê mua hàng -->
-                            <div class="customer-stats">
-                                <div class="stat-item">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-money-bill-wave text-success"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <div class="stat-value"><?php echo number_format($customer['total_spent']); ?>đ</div>
-                                        <div class="stat-label">Tổng chi tiêu</div>
-                                    </div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-icon">
-                                        <i class="fas fa-shopping-bag text-info"></i>
-                                    </div>
-                                    <div class="stat-content">
-                                        <div class="stat-value"><?php echo $customer['total_orders']; ?></div>
-                                        <div class="stat-label">Đơn hàng</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Lần mua cuối -->
-                            <?php if ($customer['last_order_date']): ?>
-                            <div class="last-order">
-                                <div class="last-order-icon">
-                                    <i class="fas fa-clock text-muted"></i>
-                                </div>
-                                <div class="last-order-content">
-                                    <div class="last-order-date">
-                                        <?php echo date('d/m/Y', strtotime($customer['last_order_date'])); ?>
-                                    </div>
-                                    <div class="last-order-days">
-                                        <?php echo $customer['days_since_last_order']; ?> ngày trước
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
-
-    <!-- Pagination -->
-    <?php if ($total_pages > 1): ?>
-    <nav class="pagination-nav">
-        <ul class="pagination justify-content-center">
-            <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
-                <a class="page-link" href="?page=<?php echo $page-1; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo $status_filter; ?>&membership=<?php echo $membership_filter; ?>">
-                    <i class="fas fa-chevron-left"></i>
-                </a>
-            </li>
-            
-            <?php for ($i = max(1, $page-2); $i <= min($total_pages, $page+2); $i++): ?>
-            <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
-                <a class="page-link" href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo $status_filter; ?>&membership=<?php echo $membership_filter; ?>">
-                    <?php echo $i; ?>
-                </a>
-            </li>
-            <?php endfor; ?>
-            
-            <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
-                <a class="page-link" href="?page=<?php echo $page+1; ?>&search=<?php echo urlencode($search); ?>&status=<?php echo $status_filter; ?>&membership=<?php echo $membership_filter; ?>">
-                    <i class="fas fa-chevron-right"></i>
-                </a>
-            </li>
-        </ul>
-        <div class="pagination-info">
-            Hiển thị <?php echo ($page-1)*$per_page + 1; ?>-<?php echo min($page*$per_page, $total_customers); ?> 
-            trong tổng số <?php echo $total_customers; ?> khách hàng
-        </div>
-    </nav>
-    <?php endif; ?>
-</div>
-
-<!-- Modal thêm/sửa khách hàng -->
-<div class="modal fade" id="customerModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="customerModalTitle">👥 Thêm Khách Hàng Mới</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="customerForm">
-                <div class="modal-body">
-                    <input type="hidden" id="customerId" name="id">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Họ tên <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="customerName" name="name" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
-                                <input type="tel" class="form-control" id="customerPhone" name="phone" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" id="customerEmail" name="email">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Giới tính</label>
-                                <select class="form-select" id="customerGender" name="gender">
-                                    <option value="Nam">Nam</option>
-                                    <option value="Nữ">Nữ</option>
-                                    <option value="Khác">Khác</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Ngày sinh</label>
-                                <input type="date" class="form-control" id="customerBirthDate" name="birth_date">
-                            </div>
-                        </div>
-                        <div class="col-md-6" id="statusField" style="display: none;">
-                            <div class="mb-3">
-                                <label class="form-label">Trạng thái</label>
-                                <select class="form-select" id="customerStatus" name="status">
-                                    <option value="active">Hoạt động</option>
-                                    <option value="inactive">Không hoạt động</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Địa chỉ</label>
-                        <textarea class="form-control" id="customerAddress" name="address" rows="2"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Ghi chú</label>
-                        <textarea class="form-control" id="customerNotes" name="notes" rows="2"></textarea>
+        <!-- Bộ lọc và tìm kiếm -->
+        <div class="filters-section">
+            <form class="row g-3 align-items-end" id="filterForm">
+                <div class="col-md-4">
+                    <div class="search-input-wrapper">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="searchInput" class="form-control" 
+                               placeholder="Tìm kiếm khách hàng... (F2)">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Lưu <kbd>Ctrl+Enter</kbd>
+                <div class="col-md-2">
+                    <select id="statusFilter" class="form-select filter-select">
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="active">Hoạt động</option>
+                        <option value="inactive">Không hoạt động</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select id="membershipFilter" class="form-select filter-select">
+                        <option value="all">Tất cả hạng</option>
+                        <option value="Thông thường">Thông thường</option>
+                        <option value="VIP">VIP</option>
+                        <option value="VVIP">VVIP</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-filter w-100" onclick="applyFilters()">
+                        <i class="fas fa-filter me-2"></i>Lọc
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-secondary btn-filter w-100" onclick="resetFilters()">
+                        <i class="fas fa-undo me-2"></i>Reset
                     </button>
                 </div>
             </form>
         </div>
-    </div>
-</div>
 
-<!-- Modal xem chi tiết khách hàng -->
-<div class="modal fade" id="customerDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">👁️ Chi Tiết Khách Hàng</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="customerDetailContent">
-                <div class="text-center">
-                    <div class="spinner-border" role="status"></div>
-                    <p>Đang tải dữ liệu...</p>
+        <!-- Danh sách khách hàng -->
+        <div class="customers-grid" id="customersGrid">
+            <!-- Customer Card 1 -->
+            <div class="customer-card" data-membership="vvip">
+                <div class="customer-header">
+                    <div>
+                        <h5 class="customer-name">Nguyễn Văn An</h5>
+                        <small class="customer-code">KH001</small>
+                    </div>
+                    <div class="customer-actions">
+                        <div class="dropdown">
+                            <button class="dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Sửa</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>Xem chi tiết</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash me-2"></i>Xóa</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="customer-details">
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <i class="fas fa-phone text-primary"></i>
+                            <span>0901234567</span>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fas fa-envelope text-success"></i>
+                            <span>an@email.com</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <i class="fas fa-birthday-cake text-warning"></i>
+                            <span>28 tuổi</span>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fas fa-user-shield text-info"></i>
+                            <span class="badge bg-purple">VVIP</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <i class="fas fa-toggle-on text-success"></i>
+                            <span class="badge bg-success">Hoạt động</span>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fas fa-history text-primary"></i>
+                            <span class="badge bg-light text-dark border">Hoạt động</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="customer-divider"></div>
+
+                <div class="customer-finance">
+                    <div class="finance-item">
+                        <div class="finance-label"><i class="fas fa-wallet me-1"></i>Tổng chi</div>
+                        <div class="finance-value">2,500,000đ</div>
+                    </div>
+                    <div class="finance-item">
+                        <div class="finance-label"><i class="fas fa-box-open me-1"></i>Đơn hàng</div>
+                        <div class="finance-value">45</div>
+                    </div>
+                </div>
+
+                <div class="last-order">
+                    <i class="fas fa-stopwatch me-1"></i>Mua cuối: 15/12/2024 (5 ngày trước)
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<script>
-// Customers page JavaScript
-let isEditMode = false;
+            <!-- Customer Card 2 -->
+            <div class="customer-card" data-membership="vip">
+                <div class="customer-header">
+                    <div>
+                        <h5 class="customer-name">Trần Thị Bình</h5>
+                        <small class="customer-code">KH002</small>
+                    </div>
+                    <div class="customer-actions">
+                        <div class="dropdown">
+                            <button class="dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Sửa</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>Xem chi tiết</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash me-2"></i>Xóa</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
 
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    // F1 - Thêm khách hàng mới
-    if (e.key === 'F1') {
-        e.preventDefault();
-        openAddCustomerModal();
-        return;
-    }
-    
-    // F2 - Focus vào ô tìm kiếm
-    if (e.key === 'F2') {
-        e.preventDefault();
-        document.getElementById('searchInput').focus();
-        return;
-    }
-    
-    // Ctrl + Enter - Submit form trong modal
-    if (e.ctrlKey && e.key === 'Enter') {
-        e.preventDefault();
-        if (document.getElementById('customerModal').classList.contains('show')) {
-            document.getElementById('customerForm').dispatchEvent(new Event('submit'));
-        }
-        return;
-    }
-    
-    // ESC - Đóng modal
-    if (e.key === 'Escape') {
-        const modals = document.querySelectorAll('.modal.show');
-        modals.forEach(modal => {
-            bootstrap.Modal.getInstance(modal).hide();
-        });
-        return;
-    }
-});
+                <div class="customer-details">
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <i class="fas fa-phone text-primary"></i>
+                            <span>0987654321</span>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fas fa-envelope text-success"></i>
+                            <span>binh@email.com</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <i class="fas fa-birthday-cake text-warning"></i>
+                            <span>35 tuổi</span>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fas fa-user-shield text-info"></i>
+                            <span class="badge bg-warning text-dark">VIP</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <i class="fas fa-toggle-on text-success"></i>
+                            <span class="badge bg-success">Hoạt động</span>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fas fa-history text-primary"></i>
+                            <span class="badge bg-light text-dark border">Ít hoạt động</span>
+                        </div>
+                    </div>
+                </div>
 
-// Auto search với debounce
-let searchTimeout;
-document.getElementById('searchInput').addEventListener('input', function() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        applyFilters();
-    }, 500);
-});
+                <div class="customer-divider"></div>
 
-// Filter change handlers
-document.getElementById('statusFilter').addEventListener('change', applyFilters);
-document.getElementById('membershipFilter').addEventListener('change', applyFilters);
+                <div class="customer-finance">
+                    <div class="finance-item">
+                        <div class="finance-label"><i class="fas fa-wallet me-1"></i>Tổng chi</div>
+                        <div class="finance-value">1,200,000đ</div>
+                    </div>
+                    <div class="finance-item">
+                        <div class="finance-label"><i class="fas fa-box-open me-1"></i>Đơn hàng</div>
+                        <div class="finance-value">28</div>
+                    </div>
+                </div>
 
-function applyFiltersAndSubmit() {
-    const search = document.getElementById('searchInput').value;
-    const status = document.getElementById('statusFilter').value;
-    const membership = document.getElementById('membershipFilter').value;
-    
-    const params = new URLSearchParams({
-        search: search,
-        status: status,
-        membership: membership,
-        page: 1 // Reset to page 1 when applying filters
-    });
-    
-    window.location.href = '?' + params.toString();
-}
-
-function applyFilters() { // This function might be called by existing event listeners, ensure it calls the new submit logic
-    applyFiltersAndSubmit();
-}
-
-function resetFilters() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('statusFilter').value = 'all';
-    document.getElementById('membershipFilter').value = 'all';
-    window.location.href = '?';
-}
-
-function openAddCustomerModal() {
-    isEditMode = false;
-    document.getElementById('customerModalTitle').textContent = '👥 Thêm Khách Hàng Mới';
-    document.getElementById('customerForm').reset();
-    document.getElementById('customerId').value = '';
-    document.getElementById('statusField').style.display = 'none';
-    
-    const modal = new bootstrap.Modal(document.getElementById('customerModal'));
-    modal.show();
-    
-    // Focus vào tên khách hàng
-    setTimeout(() => {
-        document.getElementById('customerName').focus();
-    }, 500);
-}
-
-function editCustomer(id) {
-    isEditMode = true;
-    document.getElementById('customerModalTitle').textContent = '✏️ Sửa Thông Tin Khách Hàng';
-    document.getElementById('statusField').style.display = 'block';
-    
-    // Load customer data
-    fetch('', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `action=get_customer&id=${id}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const customer = data.data;
-            document.getElementById('customerId').value = customer.id;
-            document.getElementById('customerName').value = customer.name;
-            document.getElementById('customerPhone').value = customer.phone;
-            document.getElementById('customerEmail').value = customer.email || '';
-            document.getElementById('customerAddress').value = customer.address || '';
-            document.getElementById('customerGender').value = customer.gender;
-            document.getElementById('customerBirthDate').value = customer.birth_date || '';
-            document.getElementById('customerStatus').value = customer.status;
-            document.getElementById('customerNotes').value = customer.notes || '';
-            
-            const modal = new bootstrap.Modal(document.getElementById('customerModal'));
-            modal.show();
-        } else {
-            showToast(data.message, 'error');
-        }
-    })
-    .catch(error => {
-        showToast('Lỗi khi tải dữ liệu khách hàng!', 'error');
-        console.error('Error:', error);
-    });
-}
-
-function deleteCustomer(id, name) {
-    if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng "${name}"?\n\nHành động này không thể hoàn tác!`)) {
-        return;
-    }
-    
-    fetch('', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `action=delete_customer&id=${id}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message, 'success');
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            showToast(data.message, 'error');
-        }
-    })
-    .catch(error => {
-        showToast('Lỗi khi xóa khách hàng!', 'error');
-        console.error('Error:', error);
-    });
-}
-
-function viewCustomerDetail(id) {
-    const modal = new bootstrap.Modal(document.getElementById('customerDetailModal'));
-    modal.show();
-    
-    // TODO: Load customer detail with purchase history
-    document.getElementById('customerDetailContent').innerHTML = `
-        <div class="text-center">
-            <div class="spinner-border" role="status"></div>
-            <p>Đang tải dữ liệu...</p>
-        </div>
-    `;
-    
-    // Simulate loading (replace with actual AJAX call)
-    setTimeout(() => {
-        document.getElementById('customerDetailContent').innerHTML = `
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i>
-                Tính năng xem chi tiết sẽ được phát triển trong phiên bản tiếp theo!
-                <br>Sẽ bao gồm: Lịch sử mua hàng, thống kê chi tiêu, sản phẩm yêu thích...
+                <div class="last-order">
+                    <i class="fas fa-stopwatch me-1"></i>Mua cuối: 01/12/2024 (19 ngày trước)
+                </div>
             </div>
-        `;
-    }, 1000);
-}
 
-// Handle form submission
-document.getElementById('customerForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const action = isEditMode ? 'update_customer' : 'add_customer';
-    formData.append('action', action);
-    
-    // Convert FormData to URLSearchParams
-    const params = new URLSearchParams();
-    for (let [key, value] of formData.entries()) {
-        params.append(key, value);
-    }
-    
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
-    submitBtn.disabled = true;
-    
-    fetch('', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: params.toString()
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            showToast(data.message, 'error');
-        }
-    })
-    .catch(error => {
-        showToast('Lỗi khi lưu thông tin khách hàng!', 'error');
-        console.error('Error:', error);
-    })
-    .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-});
+            <!-- Customer Card 3 -->
+            <div class="customer-card">
+                <div class="customer-header">
+                    <div>
+                        <h5 class="customer-name">Lê Văn Cường</h5>
+                        <small class="customer-code">KH003</small>
+                    </div>
+                    <div class="customer-actions">
+                        <div class="dropdown">
+                            <button class="dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Sửa</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>Xem chi tiết</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash me-2"></i>Xóa</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
 
-// Show tooltip for keyboard shortcuts on page load
-setTimeout(() => {
-    showToast('💡 Sử dụng F1 để thêm khách hàng, F2 để tìm kiếm nhanh!', 'info', 4000);
-}, 1000);
-</script>
+                <div class="customer-details">
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <i class="fas fa-phone text-primary"></i>
+                            <span>0912345678</span>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fas fa-envelope text-muted"></i>
+                            <span>N/A</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <i class="fas fa-birthday-cake text-warning"></i>
+                            <span>42 tuổi</span>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fas fa-user-shield text-info"></i>
+                            <span class="badge bg-secondary">Thông thường</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <i class="fas fa-toggle-on text-success"></i>
+                            <span class="badge bg-success">Hoạt động</span>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fas fa-history text-primary"></i>
+                            <span class="badge bg-light text-dark border">Lâu không mua</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="customer-divider"></div>
+
+                <div class="customer-finance">
+                    <div class="finance-item">
+                        <div class="finance-label"><i class="fas fa-wallet me-1"></i>Tổng chi</div>
+                        <div class="finance-value">450,000
