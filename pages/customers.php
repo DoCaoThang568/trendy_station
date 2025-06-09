@@ -1,13 +1,44 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Don't display errors to browser, might interfere with JSON
+ini_set('log_errors', 1);     // Log errors to server's error log
+
 // THIS BLOCK MUST BE AT THE VERY TOP OF THE FILE, BEFORE ANY HTML OUTPUT
-require_once 'config/database.php'; // Adjusted path
-require_once 'includes/functions.php'; // Adjusted path
+require_once __DIR__ . '/../config/database.php'; // Use __DIR__ for robustness
+require_once __DIR__ . '/../includes/functions.php'; // Use __DIR__ for robustness
 
 // --- AJAX HANDLERS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    // Ensure no prior output has started that could interfere with JSON
+    if (ob_get_level() > 0) {
+        ob_end_clean(); // Clean any existing output buffers
+    }
+    // Start a new buffer just for this AJAX response
+    ob_start();
     header('Content-Type: application/json');
+    
+    global $pdo; // Make $pdo available
+
+    // If $pdo is not set, try to include database.php again.
+    // This assumes database.php sets $pdo or provides connectDB()
+    if (!$pdo) {
+        require_once __DIR__ . '/../config/database.php'; 
+        if (!$pdo && function_exists('connectDB')) { // If connectDB function exists
+            $pdo = connectDB();
+        }
+    }
+
+    // If $pdo is still not available after trying to load/connect, send error and exit.
+    if (!$pdo) {
+        echo json_encode(['success' => false, 'message' => 'Lỗi CSDL: Không thể khởi tạo kết nối PDO cho AJAX.']);
+        if(ob_get_length() > 0) { // Check if buffer has content
+            ob_end_flush(); // Send buffer
+        }
+        exit;
+    }
+
     $action = $_POST['action'];
-    $response = ['success' => false, 'message' => 'Hành động không hợp lệ.'];
+    $response = ['success' => false, 'message' => 'Hành động không hợp lệ hoặc không được xử lý.'];
 
     try {
         switch ($action) {
@@ -106,53 +137,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             case 'get_customer_details_for_modal': // For view detail modal
                 $id = $_POST['id'] ?? 0;
-                if (!$id) throw new Exception('ID không hợp lệ cho xem chi tiết.');
-                
-                $customer_detail_sql = "SELECT c.*, 
-                                COALESCE(s_summary.total_spent_val, 0) as calculated_total_spent, 
-                                COALESCE(s_summary.total_orders_val, 0) as calculated_total_orders,
-                                s_summary.latest_sale_date_val as last_order_date,
-                                (YEAR(CURDATE()) - YEAR(c.birth_date)) - (RIGHT(CURDATE(), 5) < RIGHT(c.birth_date, 5)) as age
-                            FROM customers c
-                            LEFT JOIN (
-                                SELECT customer_id, 
-                                       MAX(sale_date) as latest_sale_date_val, 
-                                       COUNT(id) as total_orders_val, 
-                                       SUM(total_amount) as total_spent_val 
-                                FROM sales 
-                                GROUP BY customer_id
-                            ) s_summary ON c.id = s_summary.customer_id
-                            WHERE c.id = ?";
-                $stmt = $pdo->prepare($customer_detail_sql);
-                $stmt->execute([$id]);
-                $customer_detail = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($customer_detail) {
-                    $sales_history_sql = "SELECT id, sale_code, sale_date, total_amount, status 
-                                          FROM sales 
-                                          WHERE customer_id = ? 
-                                          ORDER BY sale_date DESC 
-                                          LIMIT 10"; // Get last 10 sales
-                    $sales_stmt = $pdo->prepare($sales_history_sql);
-                    $sales_stmt->execute([$id]);
-                    $customer_detail['sales_history'] = $sales_stmt->fetchAll(PDO::FETCH_ASSOC);
-                    $response = ['success' => true, 'data' => $customer_detail];
-                } else {
-                    throw new Exception('Không tìm thấy chi tiết khách hàng (ID: ' . $id . ').');
+                if (!$id) {
+                    throw new Exception('ID khách hàng không hợp lệ để xem chi tiết.');
                 }
+
+                // Fetch customer basic details
+                $sql_customer = "SELECT c.*, DATE_FORMAT(c.birth_date, '%d/%m/%Y') as formatted_birth_date, DATE_FORMAT(c.created_at, '%d/%m/%Y %H:%i') as formatted_created_at FROM customers c WHERE c.id = ?";
+                $stmt_customer = $pdo->prepare($sql_customer);
+                $stmt_customer->execute([$id]);
+                $customer = $stmt_customer->fetch(PDO::FETCH_ASSOC);
+
+                if (!$customer) {
+                    throw new Exception('Không tìm thấy khách hàng với ID ' . htmlspecialchars($id) . '.');
+                }
+
+                // Fetch sales history for the customer
+                $sql_sales = "SELECT s.id, s.sale_code, s.sale_date, s.total_amount, s.payment_status 
+                              FROM sales s 
+                              WHERE s.customer_id = ? 
+                              ORDER BY s.sale_date DESC LIMIT 10";
+                $stmt_sales = $pdo->prepare($sql_sales);
+                $stmt_sales->execute([$id]);
+                $sales_history = $stmt_sales->fetchAll(PDO::FETCH_ASSOC);
+                // Add alias for consistency in JS if needed, or handle payment_status directly
+                foreach ($sales_history as $key => $sale) {
+                    $sales_history[$key]['status'] = $sale['payment_status'];
+                }
+                $customer['sales_history'] = $sales_history;
+                
+                // Fetch return history for the customer
+                $sql_returns = "SELECT r.id, r.return_code, r.return_date, r.total_refund, s.sale_code as original_sale_code, r.status as return_status
+                                FROM returns r
+                                JOIN sales s ON r.sale_id = s.id
+                                WHERE s.customer_id = ?
+                                ORDER BY r.return_date DESC LIMIT 5";
+                $stmt_returns = $pdo->prepare($sql_returns);
+                $stmt_returns->execute([$id]);
+                $return_history = $stmt_returns->fetchAll(PDO::FETCH_ASSOC);
+                // Ensure 'status' key exists for consistency if JS expects it for returns too
+                // Also, ensure the key for refund amount is consistent if JS expects a specific one, e.g., 'total_refund_amount'
+                foreach ($return_history as $key => $return_item) {
+                    $return_history[$key]['status'] = $return_item['return_status'];
+                    // If JS expects 'total_refund_amount', create an alias:
+                    // $return_history[$key]['total_refund_amount'] = $return_item['total_refund']; 
+                }
+                $customer['return_history'] = $return_history;
+
+                $response = ['success' => true, 'data' => $customer];
+                break;
+            
+            default:
+                $response = ['success' => false, 'message' => 'Hành động AJAX không xác định: ' . htmlspecialchars($action)];
                 break;
         }
     } catch (PDOException $e) {
-        error_log("Database Error: " . $e->getMessage()); // Log actual error
-        $response['message'] = 'Lỗi truy vấn cơ sở dữ liệu.'; // User-friendly message
+        // Determine which statement object might exist to log its query string
+        $problematic_stmt = null;
+        if (isset($stmt_customer) && $stmt_customer instanceof PDOStatement) {
+            $problematic_stmt = $stmt_customer;
+        } elseif (isset($stmt_sales) && $stmt_sales instanceof PDOStatement) {
+            $problematic_stmt = $stmt_sales;
+        } elseif (isset($stmt_returns) && $stmt_returns instanceof PDOStatement) {
+            $problematic_stmt = $stmt_returns;
+        } elseif (isset($stmt_gc) && $stmt_gc instanceof PDOStatement) { // Assuming $stmt_gc is for get_customer
+            $problematic_stmt = $stmt_gc;
+        } elseif (isset($stmt_dc) && $stmt_dc instanceof PDOStatement) { // Assuming $stmt_dc is for delete_customer
+            $problematic_stmt = $stmt_dc;
+        }
+        // Add other statement variables if they exist in other AJAX actions
+        // else if (isset($stmt_add) && $stmt_add instanceof PDOStatement) { $problematic_stmt = $stmt_add; }
+        // else if (isset($stmt_update) && $stmt_update instanceof PDOStatement) { $problematic_stmt = $stmt_update; }
+
+        $sql_query_string = $problematic_stmt ? $problematic_stmt->queryString : 'N/A';
+        error_log("AJAX PDOException in customers.php (action: " . htmlspecialchars($action) . "): " . $e->getMessage() . " SQL: " . $sql_query_string);
+        $response = ['success' => false, 'message' => 'Lỗi cơ sở dữ liệu. Vui lòng thử lại sau. Chi tiết: ' . $e->getMessage()];
     } catch (Exception $e) {
-        $response['message'] = $e->getMessage();
+        error_log("AJAX Exception in customers.php (action: " . htmlspecialchars($action) . "): " . $e->getMessage());
+        $response = ['success' => false, 'message' => 'Lỗi xử lý máy chủ. Vui lòng thử lại sau. Chi tiết: ' . $e->getMessage()];
+    }
+    
+    // Clean the buffer just before sending JSON, in case of any stray output within try-catch.
+    if (ob_get_length() > 0) { // Check if buffer has content
+       ob_clean(); 
     }
     echo json_encode($response);
-    exit; // Crucial: stop further script execution for AJAX requests
+    if(ob_get_length() > 0) { // Check if buffer has content (json_encode output)
+      ob_end_flush(); // Send the output
+    }
+    exit; // Terminate script execution
 }
 
-// --- PAGE DISPLAY LOGIC ---
+// --- END AJAX HANDLERS ---
+
+// --- PHP LOGIC FOR PAGE DISPLAY (NON-AJAX) ---
 $search = $_GET['search'] ?? '';
 $status_filter = $_GET['status'] ?? 'all'; // 'all', 'active', 'inactive'
 $membership_filter = $_GET['membership'] ?? 'all'; // 'all', 'Thông thường', 'VIP', 'VVIP'
@@ -1312,6 +1389,25 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
                 </ul>`;
         }
 
+        let returnHistoryHtml = '<p class="text-muted">Chưa có lịch sử trả hàng.</p>';
+        if (customer.return_history && customer.return_history.length > 0) {
+            returnHistoryHtml = `
+                <ul class="list-group list-group-flush">
+                    ${customer.return_history.map(returnItem => `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="returns.php?view_return=${returnItem.id}" target="_blank">${returnItem.return_code}</a> 
+                                <small class="text-muted">(${new Date(returnItem.return_date).toLocaleDateString('vi-VN')})</small>
+                            </div>
+                            <div>
+                                <span class="fw-bold me-2">${Number(returnItem.total_refund).toLocaleString('vi-VN')}đ</span>
+                                <span class="badge bg-danger">Đã trả</span>
+                            </div>
+                        </li>
+                    `).join('')}
+                </ul>`;
+        }
+
         contentArea.innerHTML = `
             <div class="container-fluid">
                 <div class="row">
@@ -1359,6 +1455,8 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
                         </div>
                         <h6 class="text-muted mb-3"><i class="fas fa-history me-2"></i>Lịch sử mua hàng gần đây (10 đơn)</h6>
                         ${salesHistoryHtml}
+                        <h6 class="text-muted mb-3 mt-4"><i class="fas fa-undo me-2"></i>Lịch sử trả hàng gần đây (5 đơn)</h6>
+                        ${returnHistoryHtml}
                     </div>
                 </div>
             </div>

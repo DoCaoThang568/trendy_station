@@ -642,14 +642,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add smooth scrolling to anchors
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+            const href = this.getAttribute('href');
+            if (href && href.length > 1 && href !== "#") { // Check if href is not just "#" and has more characters
+                try {
+                    const target = document.querySelector(href);
+                    if (target) {
+                        e.preventDefault(); // Only prevent default if it's a valid internal link
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                } catch (error) {
+                    console.warn(`Smooth scroll failed for selector: ${href}`, error);
+                    // Optionally, allow default behavior if querySelector fails for some other reason
+                    // For example, if it's a link to another page that happens to start with #
+                    // but in this context, href^="#" should mostly be internal.
+                }
+            } else if (href === "#") {
+                e.preventDefault(); // Prevent default for href="#" to avoid jumping to top
+                console.log('Anchor with href="#" clicked, default prevented.');
             }
+            // If href is not valid or target not found, default browser behavior will apply (e.g., navigating to another page or doing nothing)
         });
     });
     
