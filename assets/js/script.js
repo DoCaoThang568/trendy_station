@@ -1466,7 +1466,7 @@ function addSaleToRecentList(sale) {
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <strong style="font-size: 1.1rem; color: var(--accent-color);">${sale.formatted_total}</strong>
             <span class="status-badge" style="background-color: ${sale.status_color};">
-                ${sale.translated_payment_status}
+                ${escapeHTML(sale.payment_method_display)} <!-- Changed from translated_payment_status -->
             </span>
         </div>
     `;

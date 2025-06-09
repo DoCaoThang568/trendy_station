@@ -167,8 +167,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Prepare additional data for dynamic update
                     $formatted_sale_date = date('d/m/Y H:i'); // Current time as sale date
-                    $translated_payment_status = translatePaymentStatus($payment_status);
-                    $status_color = getStatusColor($payment_status);
+                    
+                    // Translate payment method for display
+                    $payment_method_display = translatePaymentMethod($payment_method);
+                    $status_color = getPaymentMethodStatusColor($payment_method); // Use a more general color function if needed
 
                     echo json_encode([
                         'success' => true,
@@ -180,9 +182,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'sale_date' => $formatted_sale_date,
                             'final_amount' => $final_total_from_form,
                             'formatted_total' => number_format($final_total_from_form) . "đ",
-                            'payment_status' => $payment_status,
-                            'translated_payment_status' => $translated_payment_status,
-                            'status_color' => $status_color
+                            'payment_method' => $payment_method, // Original payment method code
+                            'payment_method_display' => $payment_method_display, // User-friendly payment method
+                            'status_color' => $status_color // Color based on payment method/status
                         ]
                     ]);
                     exit;

@@ -63,4 +63,39 @@ if (!function_exists('getStatusColor')) {
     }
 }
 
+if (!function_exists('translatePaymentMethod')) {
+    /**
+     * Translates payment method codes to user-friendly names.
+     *
+     * @param string $method_code The payment method code (e.g., 'cash', 'card', 'transfer').
+     * @return string The translated payment method name.
+     */
+    function translatePaymentMethod($method_code) {
+        switch (strtolower($method_code)) {
+            case 'cash':
+                return '💵 Tiền mặt';
+            case 'card':
+                return '💳 Thẻ';
+            case 'transfer':
+                return '🏦 Chuyển khoản';
+            default:
+                return ucfirst($method_code); // Fallback for unknown methods
+        }
+    }
+}
+
+if (!function_exists('getPaymentMethodStatusColor')) {
+    /**
+     * Gets a color based on the payment method (can be expanded or merged with getStatusColor).
+     *
+     * @param string $method_code The payment method code.
+     * @return string The CSS variable for color.
+     */
+    function getPaymentMethodStatusColor($method_code) {
+        // For now, let's use a generic success color for all completed payments,
+        // or you can define specific colors per payment method.
+        return 'var(--success-color)'; 
+    }
+}
+
 ?>
