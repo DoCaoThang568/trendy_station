@@ -861,11 +861,9 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Bộ lọc và tìm kiếm -->
+        </div>        <!-- Bộ lọc và tìm kiếm -->
         <div class="filters-section">
-            <form class="row g-3 align-items-end" id="filterForm">
+            <div class="row g-3 align-items-end" id="filterForm">
                 <div class="col-md-4">
                     <div class="search-input-wrapper">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
@@ -889,7 +887,7 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary btn-filter w-100">
+                    <button type="button" class="btn btn-primary btn-filter w-100" onclick="applyFilters()">
                         <i class="fas fa-filter me-2"></i>Lọc
                     </button>
                 </div>
@@ -898,7 +896,7 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
                         <i class="fas fa-undo me-2"></i>Reset
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
 
         <!-- Danh sách khách hàng -->
@@ -1184,16 +1182,14 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
                     customerForm.requestSubmit(); // Modern way to submit form
                 }
             }
-        });
-
-        // Filter form submission (if user presses Enter in search input)
-        const filterForm = document.getElementById('filterForm');
-        if(filterForm) {
-            filterForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                applyFilters();
-            });
-        }
+        });        // Filter form submission handling - Remove form submit listener since we're not using form anymore
+        // const filterForm = document.getElementById('filterForm');
+        // if(filterForm) {
+        //     filterForm.addEventListener('submit', function(e) {
+        //         e.preventDefault();
+        //         applyFilters();
+        //     });
+        // }
         
         // Debounced search
         let searchTimeout;
@@ -1202,10 +1198,11 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
             searchInput.addEventListener('input', function() {
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
-                    applyFilters(); // Or submit the form: filterForm.submit();
-                }, 500); // Adjust debounce time as needed
+                    applyFilters();
+                }, 500);
             });
         }
+        
         // Auto-apply filters on select change
         ['statusFilter', 'membershipFilter'].forEach(id => {
             const el = document.getElementById(id);
@@ -1259,19 +1256,22 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
         const status = document.getElementById('statusFilter').value;
         const membership = document.getElementById('membershipFilter').value;
         
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(); // Start with a clean slate
         params.set('search', search);
         params.set('status', status);
         params.set('membership', membership);
         params.set('page', '1'); // Reset to page 1 when filters change
         
-        window.location.search = params.toString();
+        // Construct the full URL to ensure it stays on customers.php
+        const baseUrl = window.location.origin + window.location.pathname;
+        window.location.href = baseUrl + '?' + params.toString();
     }
 
     function resetFilters() {
-        const params = new URLSearchParams(); // Clears all params
+        const params = new URLSearchParams();
         params.set('page', '1');
-        window.location.search = params.toString();
+        const baseUrl = window.location.origin + window.location.pathname;
+        window.location.href = baseUrl + '?' + params.toString();
     }
 
     // --- Modal Control Functions ---

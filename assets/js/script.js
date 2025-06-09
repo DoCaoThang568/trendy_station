@@ -1489,3 +1489,89 @@ function escapeHTML(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+/**
+ * Apply filters for customers page
+ */
+function applyFilters() {
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const membershipFilter = document.getElementById('membershipFilter');
+    
+    if (!searchInput || !statusFilter || !membershipFilter) {
+        console.warn('Filter elements not found');
+        return;
+    }
+    
+    const params = new URLSearchParams();
+    params.set('page', 'customers');
+    
+    const search = searchInput.value.trim();
+    if (search) {
+        params.set('search', search);
+    }
+    
+    const status = statusFilter.value;
+    if (status && status !== 'all') {
+        params.set('status', status);
+    }
+    
+    const membership = membershipFilter.value;
+    if (membership && membership !== 'all') {
+        params.set('membership', membership);
+    }
+    
+    // Always redirect to customers page with filters
+    window.location.href = `index.php?${params.toString()}`;
+}
+
+/**
+ * Reset filters for customers page
+ */
+function resetFilters() {
+    // Simply redirect to customers page without any parameters
+    window.location.href = 'index.php?page=customers';
+}
+
+/**
+ * Apply filters for products page
+ */
+function applyProductFilters() {
+    const searchInput = document.getElementById('productSearchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const statusFilter = document.getElementById('productStatusFilter');
+    
+    if (!searchInput || !categoryFilter || !statusFilter) {
+        console.warn('Product filter elements not found');
+        return;
+    }
+    
+    const params = new URLSearchParams();
+    params.set('page', 'products');
+    
+    const search = searchInput.value.trim();
+    if (search) {
+        params.set('search', search);
+    }
+    
+    const category = categoryFilter.value;
+    if (category && category !== 'all') {
+        params.set('category', category);
+    }
+    
+    const status = statusFilter.value;
+    if (status && status !== 'all') {
+        params.set('status', status);
+    }
+    
+    // Redirect to products page with filters
+    window.location.href = `index.php?${params.toString()}`;
+}
+
+/**
+ * Reset filters for products page
+ */
+function resetProductFilters() {
+    // Simply redirect to products page without any parameters
+    window.location.href = 'index.php?page=products';
+}
