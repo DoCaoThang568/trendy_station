@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             // Create return record
             $stmt = $pdo->prepare("
-                INSERT INTO returns (sale_id, reason, total_amount, created_at) 
+                INSERT INTO returns (sale_id, reason, total_refund, created_at) 
                 VALUES (?, ?, ?, NOW())
             ");
             
@@ -122,7 +122,7 @@ $current_page = "returns";
                             <p class="invoice-ref">Từ HĐ: <?= htmlspecialchars($return['sale_code']) ?></p>
                         </div>
                         <div class="return-amount">
-                            <span class="amount"><?= number_format($return['total_amount'], 0, ',', '.') ?>đ</span>
+                            <span class="amount"><?= number_format($return['total_refund'], 0, ',', '.') ?>đ</span>
                         </div>
                     </div>
                     
@@ -170,7 +170,7 @@ $current_page = "returns";
                         <?php foreach ($recent_sales as $sale): ?>
                         <option value="<?= $sale['id'] ?>" 
                                 data-customer="<?= htmlspecialchars($sale['customer_name'] ?? 'Khách lẻ') ?>"
-                                data-total="<?= $sale['total_amount'] ?>">
+                                data-total="<?= $sale['total_refund'] ?>">
                             HĐ #<?= $sale['id'] ?> - <?= $sale['sale_code'] ?> 
                             (<?= date('d/m/Y', strtotime($sale['created_at'])) ?>) 
                             - <?= htmlspecialchars($sale['customer_name'] ?? 'Khách lẻ') ?>
