@@ -1,5 +1,5 @@
 <?php
-require_once 'config/database.php';
+require_once __DIR__ . '/../config/database.php';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -17,10 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $pdo->beginTransaction();
             
+            // Generate unique return code
+            $return_code = 'RTN-' . strtoupper(uniqid());
+
             // Create return record
             $stmt = $pdo->prepare("
-                INSERT INTO returns (sale_id, reason, total_refund, created_at) 
-                VALUES (?, ?, ?, NOW())
+                INSERT INTO returns (return_code, sale_id, reason, total_refund, created_at) 
+                VALUES (?, ?, ?, ?, NOW())
             ");
             
             $total_return_amount = 0;
@@ -28,18 +31,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $total_return_amount += $item['return_quantity'] * $item['unit_price'];
             }
             
-            $stmt->execute([$sale_id, $reason, $total_return_amount]);
+            $stmt->execute([$return_code, $sale_id, $reason, $total_return_amount]);
             $return_id = $pdo->lastInsertId();
             
             // Create return details and update stock
             foreach ($return_items as $item) {
                 // Insert return detail
                 $stmt = $pdo->prepare("
-                    INSERT INTO return_details (return_id, product_id, quantity, unit_price, total_price) 
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO return_details (return_id, product_id, quantity, unit_price) 
+                    VALUES (?, ?, ?, ?)
                 ");
-                $total_price = $item['return_quantity'] * $item['unit_price'];
-                $stmt->execute([$return_id, $item['product_id'], $item['return_quantity'], $item['unit_price'], $total_price]);
+                $stmt->execute([$return_id, $item['product_id'], $item['return_quantity'], $item['unit_price']]);
                 
                 // Update product stock
                 $stmt = $pdo->prepare("UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?");
@@ -170,7 +172,7 @@ $current_page = "returns";
                         <?php foreach ($recent_sales as $sale): ?>
                         <option value="<?= $sale['id'] ?>" 
                                 data-customer="<?= htmlspecialchars($sale['customer_name'] ?? 'Khách lẻ') ?>"
-                                data-total="<?= $sale['total_refund'] ?>">
+                                data-total="<?= $sale['total_amount'] ?>">
                             HĐ #<?= $sale['id'] ?> - <?= $sale['sale_code'] ?> 
                             (<?= date('d/m/Y', strtotime($sale['created_at'])) ?>) 
                             - <?= htmlspecialchars($sale['customer_name'] ?? 'Khách lẻ') ?>
@@ -362,7 +364,7 @@ $current_page = "returns";
 
 .return-summary-box {
     background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
-    color: white;
+    color:rgb(7, 7, 7); 
     padding: 1.5rem;
     border-radius: 8px;
     margin-top: 1rem;
@@ -416,12 +418,42 @@ document.addEventListener('keydown', function(e) {
 });
 
 function showCreateReturnModal() {
-    document.getElementById('createReturnModal').style.display = 'flex';
-    document.getElementById('sale_select').focus();
+    console.log("showCreateReturnModal called");
+    const modal = document.getElementById('createReturnModal');
+
+    modal.style.display = 'flex';
+    console.log("Modal display style set to flex");
+
+    setTimeout(() => {
+        modal.classList.add('show');
+        console.log("Modal 'show' class added, transitions should start");
+    }, 20); 
 }
 
 function closeCreateReturnModal() {
-    document.getElementById('createReturnModal').style.display = 'none';
+    const modal = document.getElementById('createReturnModal');
+    
+    modal.classList.remove('show');
+    console.log("Modal 'show' class removed, fade-out transition should start");
+
+    const afterTransition = (event) => {
+        if (event.target === modal && event.propertyName === 'opacity') {
+            modal.style.display = 'none'; 
+            console.log("Modal display set to none after transition.");
+            modal.removeEventListener('transitionend', afterTransition);
+        }
+    };
+
+    const computedStyle = window.getComputedStyle(modal);
+    const transitionDuration = parseFloat(computedStyle.transitionDuration.replace('s', '')) * 1000; 
+
+    if (transitionDuration > 0) {
+        modal.addEventListener('transitionend', afterTransition);
+    } else {
+        modal.style.display = 'none';
+        console.log("Modal display set to none (no transition or instant).");
+    }
+
     document.getElementById('returnForm').reset();
     document.getElementById('saleDetailsSection').style.display = 'none';
     document.getElementById('returnSummary').style.display = 'none';
@@ -586,8 +618,66 @@ function searchReturns(query) {
 }
 
 function viewReturnDetail(returnId) {
-    // Implement view return detail functionality
-    showToast('Chức năng xem chi tiết đang được phát triển', 'info');
+    fetch(`ajax/get_return_detail.php?id=${returnId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                alert('Lỗi từ máy chủ: ' + (data.message || 'Không có thông tin chi tiết lỗi.'));
+                return;
+            }
+
+            if (!data.return_info || !data.return_items) {
+                alert('Dữ liệu chi tiết phiếu trả không đầy đủ từ máy chủ.');
+                return;
+            }
+
+            const totalItemsReturned = data.return_items.reduce((sum, item) => sum + parseInt(item.quantity || 0), 0);
+
+            let productsHtml = '<table class="table table-bordered"><thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead><tbody>';
+            data.return_items.forEach(item => {
+                productsHtml += `
+                    <tr>
+                        <td>${item.product_name} (${item.product_code})</td>
+                        <td>${item.quantity}</td>
+                        <td>${typeof formatCurrency === 'function' ? formatCurrency(item.unit_price) : item.unit_price}</td>
+                        <td>${typeof formatCurrency === 'function' ? formatCurrency(item.quantity * item.unit_price) : (item.quantity * item.unit_price)}</td>
+                    </tr>
+                `;
+            });
+            productsHtml += '</tbody></table>';
+
+            const content = `
+                <p><strong>Mã phiếu trả:</strong> ${data.return_info.return_code}</p>
+                <p><strong>Ngày trả:</strong> ${new Date(data.return_info.return_date).toLocaleDateString('vi-VN')}</p>
+                <p><strong>Khách hàng:</strong> ${data.return_info.customer_name || 'N/A'} (${data.return_info.customer_phone || 'N/A'})</p>
+                <p><strong>Mã hóa đơn gốc:</strong> ${data.return_info.sale_code}</p>
+                <p><strong>Lý do trả:</strong> ${data.return_info.reason || 'N/A'}</p>
+                <hr>
+                <h4>Chi tiết sản phẩm trả:</h4>
+                ${productsHtml}
+                <hr>
+                <div style="text-align: right;">
+                    <p><strong>Tổng số lượng trả:</strong> ${totalItemsReturned}</p>
+                    <p><strong>Tổng tiền hoàn trả:</strong> ${typeof formatCurrency === 'function' ? formatCurrency(data.return_info.total_refund) : data.return_info.total_refund}</p>
+                </div>
+            `;
+
+            createModal(
+                'Chi tiết phiếu trả hàng',
+                content,
+                null, // No save button for view detail
+                'viewReturnDetailModal' // Suffix for modal ID
+            );
+        })
+        .catch(error => {
+            console.error('Lỗi khi lấy chi tiết phiếu trả:', error);
+            alert('Có lỗi xảy ra khi tải chi tiết phiếu trả. Vui lòng thử lại.');
+        });
 }
 
 function printReturn(returnId) {

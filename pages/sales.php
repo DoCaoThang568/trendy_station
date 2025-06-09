@@ -431,25 +431,44 @@ $newSaleCode = generateCode('HD', 'sales', 'sale_code');
                             </span>
                         </div>
                         <div style="font-size: 0.9rem; margin-bottom: 0.25rem;">
-                            👤 <?php echo htmlspecialchars($sale['customer_name'] ?: $sale['customer_name_db']); ?>
+                            👤 <?php echo htmlspecialchars($sale['customer_name'] ?: ($sale['customer_name_db'] ?? 'Khách vãng lai')); ?>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">                            <span style="display: flex; gap: 0.5rem; align-items: center;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="display: flex; gap: 0.5rem; align-items: center;">
                                 <span style="font-weight: 600; color: var(--success-color);">
-                                    <?php echo number_format($sale['total_amount']); ?>₫
+                                    <?php echo number_format($sale['final_amount']); ?>₫
                                 </span>
                                 <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); printInvoice(<?php echo $sale['id']; ?>)" title="In hóa đơn">
                                     🖨️
                                 </button>
                             </span>
-                            <span style="background: var(--success-gradient); color: white; padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem;">
-                                <?php 
-                                switch($sale['payment_method']) {
-                                    case 'cash': echo '💵 Tiền mặt'; break;
-                                    case 'card': echo '💳 Thẻ'; break;
-                                    case 'transfer': echo '🏦 CK'; break;
-                                    default: echo $sale['payment_method'];
+                            <?php
+                                $paymentMethodValue = $sale['payment_method'];
+                                $paymentMethodDisplay = '-'; // Default to dash
+                                $paymentMethodBgColor = 'var(--primary-color)'; // Default background for dash or unknown
+
+                                switch ($paymentMethodValue) {
+                                    case 'Tiền mặt':
+                                        $paymentMethodDisplay = '💵 Tiền mặt';
+                                        $paymentMethodBgColor = 'var(--success-color, #28a745)';
+                                        break;
+                                    case 'Thẻ tín dụng': // Matching ENUM value
+                                        $paymentMethodDisplay = '💳 Thẻ';
+                                        $paymentMethodBgColor = 'var(--info-color, #17a2b8)'; // Example color for card
+                                        break;
+                                    case 'Chuyển khoản': // Matching ENUM value
+                                        $paymentMethodDisplay = '🏦 Chuyển khoản';
+                                        $paymentMethodBgColor = 'var(--purple-color, #6f42c1)';
+                                        break;
+                                    case 'Ví điện tử': // Matching ENUM value
+                                        $paymentMethodDisplay = '📱 Ví điện tử';
+                                        $paymentMethodBgColor = 'var(--warning-color, #ffc107)'; // Example color for e-wallet
+                                        break;
+                                    // No default case needed if $paymentMethodDisplay and $paymentMethodBgColor are pre-set
                                 }
-                                ?>
+                            ?>
+                            <span style="background: <?php echo $paymentMethodBgColor; ?>; color: white; padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem;">
+                                <?php echo $paymentMethodDisplay; ?>
                             </span>
                         </div>
                     </div>
