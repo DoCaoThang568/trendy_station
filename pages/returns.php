@@ -226,6 +226,22 @@ $current_page = "returns";
     </div>
 </div>
 
+<!-- View Return Detail Modal -->
+<div id="viewReturnDetailModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2>Chi tiết Phiếu Trả Hàng</h2>
+            <button class="modal-close-btn" onclick="closeViewReturnDetailModal()">×</button>
+        </div>
+        <div class="modal-body" id="returnDetailContent">
+            <!-- Details will be loaded here -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeViewReturnDetailModal()">Đóng</button>
+        </div>
+    </div>
+</div>
+
 <style>
 .returns-section {
     background: white;
@@ -384,6 +400,90 @@ $current_page = "returns";
     margin-top: 0.5rem;
 }
 
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 600px;
+    width: 90%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.modal-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 1rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem;
+    background: #f1f1f1;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background: #d1d5db;
+}
+
 @media (max-width: 768px) {
     .returns-grid {
         grid-template-columns: 1fr;
@@ -459,6 +559,15 @@ function closeCreateReturnModal() {
     document.getElementById('returnSummary').style.display = 'none';
     currentSaleDetails = [];
     returnItems = [];
+}
+
+function showViewReturnDetailModal() {
+    document.getElementById('viewReturnDetailModal').style.display = 'flex';
+}
+
+function closeViewReturnDetailModal() {
+    document.getElementById('viewReturnDetailModal').style.display = 'none';
+    document.getElementById('returnDetailContent').innerHTML = ''; // Clear content for next use
 }
 
 function loadSaleDetails(saleId) {
@@ -617,8 +726,9 @@ function searchReturns(query) {
     });
 }
 
+// Updated viewReturnDetail function and new helper functions for the modal
 function viewReturnDetail(returnId) {
-    fetch(`ajax/get_return_detail.php?id=${returnId}`)
+    fetch(`../ajax/get_return_detail.php?id=${returnId}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -626,57 +736,70 @@ function viewReturnDetail(returnId) {
             return response.json();
         })
         .then(data => {
-            if (!data.success) {
-                alert('Lỗi từ máy chủ: ' + (data.message || 'Không có thông tin chi tiết lỗi.'));
-                return;
-            }
+            if (data.success && data.return_info) {
+                const returnInfo = data.return_info;
+                const returnItems = data.return_items;
 
-            if (!data.return_info || !data.return_items) {
-                alert('Dữ liệu chi tiết phiếu trả không đầy đủ từ máy chủ.');
-                return;
-            }
-
-            const totalItemsReturned = data.return_items.reduce((sum, item) => sum + parseInt(item.quantity || 0), 0);
-
-            let productsHtml = '<table class="table table-bordered"><thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead><tbody>';
-            data.return_items.forEach(item => {
-                productsHtml += `
-                    <tr>
-                        <td>${item.product_name} (${item.product_code})</td>
-                        <td>${item.quantity}</td>
-                        <td>${typeof formatCurrency === 'function' ? formatCurrency(item.unit_price) : item.unit_price}</td>
-                        <td>${typeof formatCurrency === 'function' ? formatCurrency(item.quantity * item.unit_price) : (item.quantity * item.unit_price)}</td>
-                    </tr>
+                let html = `
+                    <div class="return-detail-section">
+                        <h4>Thông tin chung</h4>
+                        <p><strong>Mã phiếu trả:</strong> ${returnInfo.return_code || 'N/A'}</p>
+                        <p><strong>Mã hóa đơn gốc:</strong> ${returnInfo.sale_code || 'N/A'}</p>
+                        <p><strong>Khách hàng:</strong> ${returnInfo.customer_name || 'N/A'} (${returnInfo.customer_phone || 'N/A'})</p>
+                        <p><strong>Ngày trả:</strong> ${returnInfo.return_date ? new Date(returnInfo.return_date).toLocaleDateString('vi-VN') : 'N/A'}</p>
+                        <p><strong>Lý do:</strong> ${returnInfo.reason || 'N/A'}</p>
+                        <p><strong>Tổng tiền hoàn:</strong> ${parseFloat(returnInfo.total_refund || 0).toLocaleString('vi-VN')} VNĐ</p>
+                    </div>
+                    <div class="return-detail-section">
+                        <h4>Chi tiết sản phẩm trả</h4>
                 `;
-            });
-            productsHtml += '</tbody></table>';
 
-            const content = `
-                <p><strong>Mã phiếu trả:</strong> ${data.return_info.return_code}</p>
-                <p><strong>Ngày trả:</strong> ${new Date(data.return_info.return_date).toLocaleDateString('vi-VN')}</p>
-                <p><strong>Khách hàng:</strong> ${data.return_info.customer_name || 'N/A'} (${data.return_info.customer_phone || 'N/A'})</p>
-                <p><strong>Mã hóa đơn gốc:</strong> ${data.return_info.sale_code}</p>
-                <p><strong>Lý do trả:</strong> ${data.return_info.reason || 'N/A'}</p>
-                <hr>
-                <h4>Chi tiết sản phẩm trả:</h4>
-                ${productsHtml}
-                <hr>
-                <div style="text-align: right;">
-                    <p><strong>Tổng số lượng trả:</strong> ${totalItemsReturned}</p>
-                    <p><strong>Tổng tiền hoàn trả:</strong> ${typeof formatCurrency === 'function' ? formatCurrency(data.return_info.total_refund) : data.return_info.total_refund}</p>
-                </div>
-            `;
+                if (returnItems && returnItems.length > 0) {
+                    html += `
+                        <table class="table table-sm table-bordered" style="width: 100%; margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>Mã SP</th>
+                                    <th>Tên sản phẩm</th>
+                                    <th style="text-align: right;">Số lượng</th>
+                                    <th style="text-align: right;">Đơn giá</th>
+                                    <th style="text-align: right;">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    returnItems.forEach(item => {
+                        const unitPrice = parseFloat(item.unit_price || 0);
+                        const quantity = parseInt(item.quantity || 0);
+                        const totalPrice = unitPrice * quantity;
+                        html += `
+                            <tr>
+                                <td>${item.product_code || 'N/A'}</td>
+                                <td>${item.product_name || 'N/A'}</td>
+                                <td style="text-align: right;">${quantity}</td>
+                                <td style="text-align: right;">${unitPrice.toLocaleString('vi-VN')} VNĐ</td>
+                                <td style="text-align: right;">${totalPrice.toLocaleString('vi-VN')} VNĐ</td>
+                            </tr>
+                        `;
+                    });
+                    html += `
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    html += '<p>Không có sản phẩm nào trong phiếu trả này.</p>';
+                }
+                html += '</div>';
 
-            createModal(
-                'Chi tiết phiếu trả hàng',
-                content,
-                null, // No save button for view detail
-                'viewReturnDetailModal' // Suffix for modal ID
-            );
+                document.getElementById('returnDetailContent').innerHTML = html;
+                showViewReturnDetailModal();
+            } else {
+                showToast('Lỗi: ' + (data.message || 'Không thể tải chi tiết phiếu trả.'), 'error');
+            }
         })
         .catch(error => {
-            console.error('Lỗi khi lấy chi tiết phiếu trả:', error);
-            alert('Có lỗi xảy ra khi tải chi tiết phiếu trả. Vui lòng thử lại.');
+            console.error('Error fetching return details:', error);
+            showToast('Lỗi kết nối hoặc xử lý dữ liệu khi tải chi tiết phiếu trả. ' + error.message, 'error');
         });
 }
 
