@@ -18,32 +18,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $importCode = generateCode('PN', 'imports', 'import_code');
                 
                 // Get form data
-                // $supplier_id from form's 'id' field, should be inserted into imports.supplier_id
-                $supplier_id_from_form = !empty($_POST['id']) ? (int)$_POST['id'] : null; 
+                // CORRECTLY GET SUPPLIER ID FROM THE FORM FIELD, LIKELY NAMED 'supplier_id'
+                $supplier_id_from_form = !empty($_POST['supplier_id']) ? (int)$_POST['supplier_id'] : null; 
                 
-                // Lines 22 and 23 ($supplier_name = $_POST['name']; $supplier_phone = $_POST['phone'];) are removed
-                // as 'name' and 'phone' are not columns in the 'imports' table and were causing warnings/SQL errors.
-                // If supplier name/phone are needed for other purposes (e.g. creating a new supplier),
-                // that logic should be handled separately and ensure $_POST keys exist.
+                $fetched_supplier_name = null; // Default to null
+                if ($supplier_id_from_form) {
+                    // Fetch supplier name from suppliers table
+                    $stmt_supplier = $pdo->prepare("SELECT name FROM suppliers WHERE id = ?");
+                    $stmt_supplier->execute([$supplier_id_from_form]);
+                    $supplier_data = $stmt_supplier->fetch(PDO::FETCH_ASSOC);
+                    if ($supplier_data) {
+                        $fetched_supplier_name = $supplier_data['name'];
+                    } else {
+                        // Optional: Handle case where supplier_id is given but not found
+                        // For now, fetched_supplier_name will remain null, which is acceptable
+                        // as the primary link is supplier_id.
+                    }
+                }
 
                 $total_amount = floatval($_POST['total_amount'] ?? 0);
-                // $payment_status = $_POST['payment_status']; // This line is kept to avoid breaking POST data expectations, but $payment_status is not used below
                 $notes = $_POST['notes'] ?? '';
                 
                 // Insert import record
-                // SQL assumes 'imports' table has: id (PK,AI), import_code, supplier_id, import_date, total_amount, notes, created_by, status
-                // Corrected SQL:
-                // - Uses 'supplier_id' column for the supplier's ID.
-                // - Removed 'name', 'phone' columns.
-                // - Added 'import_date' column, set to NOW().
-                // - 'created_by' and 'status' are hardcoded as in the original query.
-                $sql = "INSERT INTO imports (import_code, supplier_id, import_date, total_amount, notes, created_by, status) 
-                        VALUES (?, ?, NOW(), ?, ?, ?, ?)"; // 6 placeholders for 6 values + NOW()
+                $sql = "INSERT INTO imports (import_code, supplier_id, supplier_name, import_date, total_amount, notes, created_by, status) 
+                        VALUES (?, ?, ?, NOW(), ?, ?, ?, ?)";
                 
                 $params = [
                     $importCode, 
-                    $supplier_id_from_form, 
-                    // NOW() is in SQL string for import_date
+                    $supplier_id_from_form, // Use the correctly fetched supplier_id
+                    $fetched_supplier_name, 
                     $total_amount, 
                     $notes,
                     'admin',        // created_by

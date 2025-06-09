@@ -1187,6 +1187,99 @@ function getCartSummary() {
     };
 }
 
+/**
+ * Fetches and displays the details of a specific import in a modal.
+ * @param {number|string} importId The ID of the import to display.
+ */
+async function showImportDetailsModal(importId) {
+    console.log('showImportDetailsModal called with importId:', importId); // DEBUG LINE 1
+
+    if (!importId) {
+        showToast('ID phiếu nhập không hợp lệ.', 'error');
+        return;
+    }
+
+    try {
+        // Optional: showLoading('main-content'); // Or a more specific loader
+
+        const data = await apiRequest(`ajax/get_import_detail.php?id=${importId}`);
+        console.log('Data received from ajax/get_import_detail.php:', data); // DEBUG LINE 2
+
+        // Optional: hideLoading('main-content');
+
+        if (data && data.import) {
+            const importData = data.import;
+            console.log('Import data object:', importData); // DEBUG LINE 3
+            const productsDetails = data.details;
+
+            let productsHtml = `
+                <table class="table table-sm table-bordered mt-2" style="font-size: 0.85rem;">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th>Mã SP</th>
+                            <th>SL</th>
+                            <th>Đơn giá</th>
+                            <th>Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            if (productsDetails && productsDetails.length > 0) {
+                productsDetails.forEach(detail => {
+                    productsHtml += `
+                        <tr>
+                            <td>${detail.product_name || 'N/A'}</td>
+                            <td>${detail.product_code || 'N/A'}</td>
+                            <td>${detail.quantity || 0}</td>
+                            <td class="text-right">${detail.unit_price_formatted || '0'}đ</td>
+                            <td class="text-right">${detail.total_price_formatted || '0'}đ</td>
+                        </tr>`;
+                });
+            } else {
+                productsHtml += '<tr><td colspan="5" class="text-center">Không có sản phẩm chi tiết.</td></tr>';
+            }
+            productsHtml += '</tbody></table>';
+
+            const modalContent = `
+                <div class="import-details-content" style="font-size: 0.9rem;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Mã phiếu nhập:</strong> ${importData.import_code || 'N/A'}</p>
+                            <p><strong>Ngày nhập:</strong> ${importData.created_at_formatted || 'N/A'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Tổng tiền:</strong> <span class="text-danger font-weight-bold">${importData.total_amount_formatted || '0'}đ</span></p>
+                            <p><strong>Trạng thái:</strong> ${importData.status || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <p class="mb-1"><strong>Ghi chú:</strong></p>
+                    <p style="white-space: pre-wrap; background: #f9f9f9; padding: 8px; border-radius: 4px; min-height: 40px;">${importData.notes || 'Không có'}</p>
+                    
+                    <hr class="my-3">
+                    <h5 class="mt-2 mb-2">Thông tin nhà cung cấp</h5>
+                    <p><strong>Tên NCC:</strong> ${importData.supplier_name || 'Không xác định'}</p>
+                    <p><strong>Điện thoại:</strong> ${importData.supplier_phone || 'Không có'}</p>
+                    <p><strong>Địa chỉ:</strong> ${importData.supplier_address || 'Không có'}</p>
+                    
+                    <hr class="my-3">
+                    <h5 class="mt-2 mb-2">Chi tiết sản phẩm nhập</h5>
+                    ${productsHtml}
+                </div>
+            `;
+            
+            createModal(`Chi tiết phiếu nhập ${importData.import_code || ''}`, modalContent, null, `importDetail_${importId}`);
+        } else {
+            showToast(data.error || 'Không thể tải chi tiết phiếu nhập. Dữ liệu không hợp lệ.', 'error');
+            console.error('Error or invalid data from server:', data); // DEBUG LINE 4
+        }
+    } catch (error) {
+        // Optional: hideLoading('main-content');
+        console.error('Lỗi khi tải chi tiết phiếu nhập (trong catch block):', error); // DEBUG LINE 5
+        showToast('Lỗi khi tải chi tiết phiếu nhập: ' + (error.message || 'Unknown error'), 'error');
+    }
+}
+
 // Performance optimization for large product lists
 function debounce(func, wait) {
     let timeout;
