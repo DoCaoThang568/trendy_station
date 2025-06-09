@@ -140,6 +140,7 @@ CREATE TABLE customers (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_membership_update TIMESTAMP NULL DEFAULT NULL, -- Thêm dòng này
     
     INDEX idx_phone (phone),
     INDEX idx_membership (membership_level),
@@ -350,11 +351,12 @@ SELECT
     c.total_orders,
     c.loyalty_points,
     CASE 
-        WHEN c.total_spent >= 10000000 THEN 'VVIP'
-        WHEN c.total_spent >= 5000000 THEN 'VIP'
+        WHEN c.total_spent >= 10000000 OR c.total_orders >= 15 THEN 'VVIP'
+        WHEN c.total_spent >= 5000000 OR c.total_orders >= 10 THEN 'VIP'
         ELSE 'Thông thường'
     END as suggested_level,
-    c.is_active
+    c.is_active,
+    c.last_membership_update -- Thêm dòng này
 FROM customers c;
 
 -- View: Báo cáo bán hàng
