@@ -1066,9 +1066,88 @@ document.addEventListener('DOMContentLoaded', function() {
             closeModal(event.target.id);
         }
     };
+      // Handle sale form submission via AJAX
+    const saleForm = document.getElementById('saleForm');
+    if (saleForm) {
+        saleForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // Disable submit button to prevent double submission
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '⏳ Đang xử lý...';
+            }
+            
+            // Send AJAX request
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    // Add this header to ensure PHP identifies it as an AJAX request
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => {
+                // Log the raw response text
+                return response.text().then(text => {
+                    console.log('Raw server response:', text); // Log raw response
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Failed to parse JSON:', e, 'Raw text was:', text);
+                        throw new Error('Server returned non-JSON response');
+                    }
+                });
+            })
+            .then(data => {
+                console.log('Data received in .then(data => ...):', data); // Log data for debugging
+                if (data.success && data.sale) {
+                    try {
+                        showToast(data.message || 'Tạo hóa đơn thành công!', 'success');
+                        clearDraft();
+                        resetForm();
+                        addSaleToRecentList(data.sale);
+                    } catch (uiError) {
+                        console.error('Error updating UI after successful sale creation:', uiError);
+                        showToast('Hóa đơn đã tạo, nhưng có lỗi khi cập nhật giao diện. Vui lòng tải lại trang.', 'warning');
+                    }
+                } else {
+                    let errorMessage = 'Có lỗi xảy ra khi tạo hóa đơn!';
+                    if (data.message) {
+                        errorMessage = data.message; // Use server's error message if available
+                    } else if (data.hasOwnProperty('success') && !data.success) {
+                        errorMessage = 'Lỗi: Máy chủ báo tạo hóa đơn không thành công. Kiểm tra console để biết thêm chi tiết.';
+                    } else if (!data.sale) {
+                        errorMessage = 'Lỗi: Không nhận được đủ dữ liệu hóa đơn từ máy chủ để cập nhật giao diện.';
+                    }
+                    showToast(errorMessage, 'error');
+                    console.error('Server response indicated failure, missing sale data, or other issue:', data);
+                }
+            })
+            .catch(error => {
+                console.error('AJAX Error creating sale:', error);
+                showToast(error.message === 'Server returned non-JSON response' ? 'Lỗi: Phản hồi từ máy chủ không hợp lệ. Kiểm tra Console (F12).' : 'Có lỗi kết nối hoặc xử lý khi tạo hóa đơn! Vui lòng thử lại.', 'error');
+            })
+            .finally(() => {
+                // Re-enable submit button
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '💾 Tạo hóa đơn';
+                }
+            });
+        });
+    }
     
-    // Handle form submissions
+    // Handle other form submissions (generic)
     document.addEventListener('submit', function(e) {
+        // Skip if this is the sale form (already handled above)
+        if (e.target.id === 'saleForm') {
+            return;
+        }
+        
         e.preventDefault();
         
         const form = e.target;
@@ -1296,4 +1375,117 @@ function debounce(func, wait) {
 // Enhanced product search with debouncing
 if (typeof searchProducts !== 'undefined') {
     window.searchProducts = debounce(window.searchProducts, 300);
+}
+
+/**
+ * Sales Form Functions
+ */
+
+// Reset the sales form to initial state
+function resetForm() {
+    const saleForm = document.getElementById('saleForm');
+    if (!saleForm) return;
+    
+    // Reset form fields
+    saleForm.reset();
+    
+    // Clear dynamic data
+    document.getElementById('itemsContainer').innerHTML = '';
+    document.getElementById('productsData').value = '';
+    document.getElementById('subtotalInput').value = '';
+    document.getElementById('discountAmountInput').value = '';
+    document.getElementById('totalAmountInput').value = '';
+    
+    // Reset display values
+    document.getElementById('subtotal').textContent = '0₫';
+    document.getElementById('discountDisplay').textContent = '0₫';
+    document.getElementById('totalAmount').textContent = '0₫';
+    document.getElementById('discountAmount').value = '';
+    
+    // Reset submit button
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '💾 Tạo hóa đơn';
+    }
+    
+    // Clear customer selection
+    const customerSelect = document.getElementById('customer_id');
+    if (customerSelect) {
+        customerSelect.value = '';
+    }
+    
+    showToast('Form đã được làm mới!', 'info');
+}
+
+// Clear any saved draft data (can be expanded later)
+function clearDraft() {
+    // Remove any localStorage draft data if implemented
+    if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('sale_draft');
+    }
+}
+
+// Call clearDraft after successful form submission
+window.clearDraft = clearDraft;
+window.resetForm = resetForm;
+
+/**
+ * Dynamically adds a new sale item to the recent sales list in the UI.
+ * @param {object} sale - The sale object returned from the server.
+ */
+function addSaleToRecentList(sale) {
+    const recentSalesContainer = document.querySelector('.data-table div[style*="max-height: 500px"]');
+    if (!recentSalesContainer) {
+        console.warn('Recent sales container not found. Cannot update UI dynamically.');
+        return;
+    }
+
+    // Remove "Chưa có hóa đơn nào" message if it exists
+    const noSalesMessage = recentSalesContainer.querySelector('div[style*="text-align: center"]');
+    if (noSalesMessage) {
+        noSalesMessage.remove();
+    }
+
+    const saleItem = document.createElement('div');
+    saleItem.style.cssText = "padding: 1rem 1.5rem; border-bottom: 1px solid rgba(102, 126, 234, 0.1); cursor: pointer; transition: var(--transition);";
+    saleItem.setAttribute('onclick', `viewSaleDetail('${sale.sale_code}', ${sale.id})`);
+    saleItem.onmouseover = function() { this.style.background = 'var(--bg-tertiary)'; };
+    saleItem.onmouseout = function() { this.style.background = 'transparent'; };
+
+    saleItem.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <strong style="color: var(--primary-color);">${sale.sale_code}</strong>
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">
+                ${sale.sale_date} <!-- Assuming sale_date is already formatted -->
+            </span>
+        </div>
+        <div style="font-size: 0.9rem; margin-bottom: 0.25rem;">
+            👤 ${escapeHTML(sale.customer_name)}
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="font-size: 1.1rem; color: var(--accent-color);">${sale.formatted_total}</strong>
+            <span class="status-badge" style="background-color: ${sale.status_color};">
+                ${sale.translated_payment_status}
+            </span>
+        </div>
+    `;
+
+    // Add to the top of the list
+    recentSalesContainer.insertBefore(saleItem, recentSalesContainer.firstChild);
+}
+
+/**
+ * Utility function to escape HTML to prevent XSS.
+ * @param {string} str - The string to escape.
+ * @returns {string} The escaped string.
+ */
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return str.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }

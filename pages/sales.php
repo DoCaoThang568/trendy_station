@@ -18,80 +18,246 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $saleCode = generateCode('HD', 'sales', 'sale_code');
                 
                 // Get form data
-                $customer_id = !empty($_POST['customer_id']) ? $_POST['customer_id'] : null;
-                $customer_name = $_POST['customer_name'];
-                $customer_phone = $_POST['customer_phone'];
-                $subtotal = floatval($_POST['subtotal']);
-                $discount_percent = floatval($_POST['discount_percent']);
-                $discount_amount = floatval($_POST['discount_amount']);
-                $total_amount = floatval($_POST['total_amount']);
-                $payment_method = $_POST['payment_method'];
-                $notes = $_POST['notes'];
+                $customer_id = !empty($_POST['customer_id']) ? (int)$_POST['customer_id'] : null;
+                $customer_name = trim($_POST['customer_name'] ?? 'Khách vãng lai');
+                $customer_phone = trim($_POST['customer_phone'] ?? '');
                 
+                // Amounts from hidden inputs, should be calculated client-side and validated server-side if necessary
+                $subtotal_from_form = floatval($_POST['subtotal'] ?? 0); // This is the sum of (item.price * item.quantity)
+                $discount_percent_from_form = floatval($_POST['discount_percent'] ?? 0);
+                $discount_amount_from_form = floatval($_POST['discount_amount'] ?? 0); // This is the overall discount amount
+                $final_total_from_form = floatval($_POST['total_amount'] ?? 0); // This is the final amount after overall discount
+
+                $payment_method = $_POST['payment_method'] ?? 'Tiền mặt';
+                $notes = trim($_POST['notes'] ?? '');
+                $payment_status = 'Đã thanh toán'; // Default or from form if available
+                $cashier_name = 'Admin'; // Or from logged-in user session
+
                 // Insert sale record
-                $sql = "INSERT INTO sales (sale_code, customer_id, customer_name, customer_phone, 
-                               subtotal, discount_percent, discount_amount, total_amount, 
-                               payment_method, notes, created_by) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin')";
+                // Note: The sales table has total_amount AND final_amount.
+                // Assuming total_amount is pre-discount and final_amount is post-discount.
+                // The form sends 'subtotal' (pre-discount sum of items) and 'total_amount' (final post-discount).
+                $sql_sale = "INSERT INTO sales (sale_code, customer_id, customer_name, customer_phone, 
+                               total_amount, discount_percent, discount_amount, final_amount, 
+                               payment_method, payment_status, notes, cashier_name, sale_date, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
                 
-                $stmt = executeQuery($sql, [
-                    $saleCode, $customer_id, $customer_name, $customer_phone,
-                    $subtotal, $discount_percent, $discount_amount, $total_amount,
-                    $payment_method, $notes
+                executeQuery($sql_sale, [
+                    $saleCode, 
+                    $customer_id, 
+                    $customer_name, 
+                    $customer_phone,
+                    $subtotal_from_form,         // total_amount (sum of item totals before overall discount)
+                    $discount_percent_from_form, // discount_percent (overall discount %)
+                    $discount_amount_from_form,  // discount_amount (overall discount value)
+                    $final_total_from_form,      // final_amount (amount after overall discount)
+                    $payment_method, 
+                    $payment_status,
+                    $notes,
+                    $cashier_name
                 ]);
                 
                 $saleId = $pdo->lastInsertId();
                 
                 // Insert sale details
-                $products = json_decode($_POST['products'], true);
+                $products_json = $_POST['products'] ?? '[]';
+                $products = json_decode($products_json, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new Exception('Lỗi giải mã JSON sản phẩm: ' . json_last_error_msg());
+                }
+
+                if (empty($products)) {
+                    throw new Exception('Không có sản phẩm nào trong hóa đơn.');
+                }
+
                 foreach ($products as $product) {
-                    if (!empty($product['product_id']) && $product['quantity'] > 0) {
-                        // Insert sale detail
-                        $sql = "INSERT INTO sale_details (sale_id, product_id, product_name, quantity, unit_price) 
-                                VALUES (?, ?, ?, ?, ?)";
-                        executeQuery($sql, [
+                    if (!empty($product['product_id']) && isset($product['quantity']) && $product['quantity'] > 0 && isset($product['unit_price'])) {
+                        $product_id = (int)$product['product_id'];
+                        $quantity = (int)$product['quantity'];
+                        $unit_price = floatval($product['unit_price']);
+                        $product_name = trim($product['product_name'] ?? ''); // Get product name from submitted data
+                        
+                        // Fetch product_code from DB to ensure accuracy
+                        $stmt_product_code = $pdo->prepare("SELECT product_code FROM products WHERE id = ?");
+                        $stmt_product_code->execute([$product_id]);
+                        $product_db_data = $stmt_product_code->fetch(PDO::FETCH_ASSOC);
+                        $product_code = $product_db_data ? $product_db_data['product_code'] : 'N/A';
+
+                        if (empty($product_name) && $product_db_data) {
+                             // Fallback if product_name wasn't in JSON, try to get from DB (though it should be in JSON)
+                            $stmt_p_name = $pdo->prepare("SELECT name FROM products WHERE id = ?");
+                            $stmt_p_name->execute([$product_id]);
+                            $p_name_row = $stmt_p_name->fetch(PDO::FETCH_ASSOC);
+                            if($p_name_row) $product_name = $p_name_row['name'];
+                        }
+
+                        $total_price = $quantity * $unit_price;
+                        // Assuming no per-item discount from the form structure provided
+                        $item_discount_percent = 0;
+                        $item_discount_amount = 0;
+                        $item_final_price = $total_price; 
+
+                        $sql_details = "INSERT INTO sale_details (sale_id, product_id, product_code, product_name, quantity, unit_price, total_price, discount_percent, discount_amount, final_price) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        executeQuery($sql_details, [
                             $saleId, 
-                            $product['product_id'],
-                            $product['product_name'],
-                            $product['quantity'],
-                            $product['unit_price']
+                            $product_id,
+                            $product_code,
+                            $product_name,
+                            $quantity,
+                            $unit_price,
+                            $total_price, // total_price for the item line
+                            $item_discount_percent, // per-item discount_percent
+                            $item_discount_amount,  // per-item discount_amount
+                            $item_final_price       // final_price for the item line
                         ]);
                         
                         // Update stock
-                        $sql = "UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?";
-                        executeQuery($sql, [$product['quantity'], $product['product_id']]);
+                        $sql_update_stock = "UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?";
+                        $stmt_stock = executeQuery($sql_update_stock, [$quantity, $product_id, $quantity]);
+                        if ($stmt_stock->rowCount() == 0) {
+                            // Stock was not enough or product_id invalid, throw error to rollback
+                            throw new Exception("Không đủ tồn kho cho sản phẩm '${product_name}' (ID: ${product_id}) hoặc sản phẩm không tồn tại.");
+                        }
                         
-                        // Record stock movement
-                        $sql = "INSERT INTO stock_movements (product_id, movement_type, reference_id, 
-                                       quantity_change, stock_before, stock_after, notes) 
-                                SELECT ?, 'sale', ?, ?, stock_quantity + ?, stock_quantity, ?
-                                FROM products WHERE id = ?";
-                        executeQuery($sql, [
-                            $product['product_id'], $saleId, -$product['quantity'],
-                            $product['quantity'], "Bán hàng - HĐ: $saleCode",
-                            $product['product_id']
+                        // Record stock movement (IF stock_movements table is used)
+                        /* 
+                        $sql_stock_movement = "INSERT INTO stock_movements (product_id, movement_type, reference_id, reference_code, 
+                                       quantity_change, stock_before, stock_after, notes, created_by) 
+                                SELECT ?, 'sale', ?, ?, ?, p.stock_quantity + ?, p.stock_quantity, ?, ?
+                                FROM products p WHERE p.id = ?";
+                        executeQuery($sql_stock_movement, [
+                            $product_id, 
+                            $saleId, 
+                            $saleCode, // reference_code
+                            -$quantity, // quantity_change (negative for sale)
+                            $quantity, // for stock_before calculation (stock_after + quantity_sold)
+                            "Bán hàng - HĐ: $saleCode", // notes
+                            $cashier_name, // created_by
+                            $product_id
                         ]);
+                        */
+                    } else {
+                        // Optional: Log or handle invalid product entries in the products JSON
+                        // For now, we skip them if they lack essential data.
                     }
                 }
                 
-                // Update customer total purchases if customer exists
+                // Update customer total_spent and total_orders if customer_id is valid
                 if ($customer_id) {
-                    $sql = "UPDATE customers SET total_purchases = total_purchases + ? WHERE id = ?";
-                    executeQuery($sql, [$total_amount, $customer_id]);
+                    $sql_update_customer = "UPDATE customers SET total_spent = total_spent + ?, total_orders = total_orders + 1 WHERE id = ?";
+                    executeQuery($sql_update_customer, [$final_total_from_form, $customer_id]);
                 }
                   $pdo->commit();
-                clearDraft(); // Clear draft on success
-                $_SESSION['success_message'] = "Tạo hóa đơn $saleCode thành công! Tổng tiền: " . number_format($total_amount) . "đ";
                 
+                // Check if this is an AJAX request
+                $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                         strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+                
+                if ($isAjax) {
+                    // Return JSON response for AJAX
+                    
+                    // Clean any existing output buffers to prevent HTML leakage
+                    while (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                    
+                    header('Content-Type: application/json');
+                    
+                    // Prepare additional data for dynamic update
+                    $formatted_sale_date = date('d/m/Y H:i'); // Current time as sale date
+                    $translated_payment_status = translatePaymentStatus($payment_status);
+                    $status_color = getStatusColor($payment_status);
+
+                    echo json_encode([
+                        'success' => true,
+                        'message' => "Tạo hóa đơn $saleCode thành công!",
+                        'sale' => [
+                            'sale_code' => $saleCode,
+                            'id' => $saleId,
+                            'customer_name' => $customer_name, // Customer name from form/default
+                            'sale_date' => $formatted_sale_date,
+                            'final_amount' => $final_total_from_form,
+                            'formatted_total' => number_format($final_total_from_form) . "đ",
+                            'payment_status' => $payment_status,
+                            'translated_payment_status' => $translated_payment_status,
+                            'status_color' => $status_color
+                        ]
+                    ]);
+                    exit;
+                } else {
+                    // Traditional form submission - redirect
+                    $_SESSION['success_message'] = "Tạo hóa đơn $saleCode thành công! Tổng tiền: " . number_format($final_total_from_form) . "đ. ID hóa đơn: $saleId";
+                    header('Location: index.php?page=sales');
+                    exit;
+                }
+
             } catch (Exception $e) {
-                $pdo->rollBack();
-                $_SESSION['error_message'] = 'Lỗi tạo hóa đơn: ' . $e->getMessage();
+                if ($pdo && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                
+                // Check if this is an AJAX request
+                $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                         strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+                
+                if ($isAjax) {
+                    // Clean any existing output buffers
+                    while (ob_get_level() > 0) {
+                        ob_end_clean();
+                    }
+                
+                    // Return JSON error response for AJAX
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Lỗi khi tạo hóa đơn: ' . $e->getMessage()
+                    ]);
+                    exit;
+                } else {
+                    // Traditional form submission - redirect with error
+                    $_SESSION['error_message'] = 'Lỗi khi tạo hóa đơn: ' . $e->getMessage();
+                    header('Location: index.php?page=sales');
+                    exit;
+                }
             }
+            break;
+        case 'delete_sale': // Make sure this case exists and is functional if needed
+            // ... (implementation for deleting a sale, including reversing stock, etc.)
+            // try {
+            //     $saleId = $_POST['sale_id'];
+            //     $pdo->beginTransaction();
+
+            //     // Fetch sale details to revert stock
+            //     $details = fetchAll("SELECT product_id, quantity FROM sale_details WHERE sale_id = ?", [$saleId]);
+            //     foreach ($details as $detail) {
+            //         executeQuery("UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?", [$detail['quantity'], $detail['product_id']]);
+            //         // Optional: Record stock movement for sale_cancel
+            //     }
+
+            //     // Delete sale details and sale
+            //     executeQuery("DELETE FROM sale_details WHERE sale_id = ?", [$saleId]);
+            //     executeQuery("DELETE FROM sales WHERE id = ?", [$saleId]);
+                
+            //     // Optional: Update customer total_spent and total_orders
+
+            //     $pdo->commit();
+            //     $_SESSION['success_message'] = 'Xóa hóa đơn thành công!';
+            // } catch (Exception $e) {
+            //     $pdo->rollBack();
+            //     $_SESSION['error_message'] = 'Lỗi xóa hóa đơn: ' . $e->getMessage();
+            // }
+            // header('Location: index.php?page=sales');
+            // exit;
             break;
     }
     
-    header('Location: index.php?page=sales');
-    exit;
+    // Fallback redirect if action not handled or if create_sale didn't exit (e.g. if AJAX part is added and exit is conditional)
+    // However, create_sale above has its own redirect/exit.
+    // This line might be redundant if all cases handle their own exit/redirect.
+    // header('Location: index.php?page=sales'); 
+    // exit;
 }
 
 // Get recent sales

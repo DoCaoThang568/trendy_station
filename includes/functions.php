@@ -17,4 +17,50 @@ if (!function_exists('formatDate')) {
 
 // Add other global utility functions here if needed
 
+if (!function_exists('translatePaymentStatus')) {
+    /**
+     * Translates payment status to Vietnamese.
+     *
+     * @param string $status The payment status.
+     * @return string The translated status.
+     */
+    function translatePaymentStatus($status) {
+        switch ($status) {
+            case 'Đã thanh toán':
+                return 'Đã thanh toán';
+            case 'Chưa thanh toán':
+                return 'Chưa thanh toán';
+            case 'Đã hủy':
+                return 'Đã hủy';
+            case 'Đang xử lý':
+                return 'Đang xử lý';
+            default:
+                return ucfirst($status);
+        }
+    }
+}
+
+if (!function_exists('getStatusColor')) {
+    /**
+     * Gets a color based on the status.
+     *
+     * @param string $status The status.
+     * @return string The hex color code.
+     */
+    function getStatusColor($status) {
+        switch ($status) {
+            case 'Đã thanh toán':
+                return 'var(--success-color)'; // Green
+            case 'Chưa thanh toán':
+                return 'var(--warning-color)'; // Orange
+            case 'Đã hủy':
+                return 'var(--danger-color)';  // Red
+            case 'Đang xử lý':
+                return 'var(--info-color)';    // Blue
+            default:
+                return 'var(--text-secondary)'; // Grey
+        }
+    }
+}
+
 ?>
