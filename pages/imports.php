@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->beginTransaction();
                 
                 // Generate import code
-                $importCode = generateCode('NH', 'imports', 'import_code');
+                $importCode = generateCode('PN', 'imports', 'import_code');
                 
                 // Get form data
                 $supplier_id = !empty($_POST['supplier_id']) ? $_POST['supplier_id'] : null;
@@ -26,14 +26,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notes = $_POST['notes'];
                 
                 // Insert import record
-                // Removed payment_status from the INSERT query
                 $sql = "INSERT INTO imports (import_code, supplier_id, supplier_name, supplier_phone, 
-                               total_amount, notes, created_by) 
-                        VALUES (?, ?, ?, ?, ?, ?, 'admin')";
+                               total_amount, notes, created_by, status) 
+                        VALUES (?, ?, ?, ?, ?, ?, 'admin', 'Hoàn thành')";
                 
                 $stmt = executeQuery($sql, [
                     $importCode, $supplier_id, $supplier_name, $supplier_phone,
-                    $total_amount, $notes // Removed $payment_status from parameters
+                    $total_amount, $notes
                 ]);
                 
                 $importId = $pdo->lastInsertId();
@@ -42,15 +41,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $products = json_decode($_POST['products'], true);
                 foreach ($products as $product) {
                     if (!empty($product['product_id']) && $product['quantity'] > 0) {
+                        // Calculate total cost
+                        $total_cost = $product['quantity'] * $product['unit_cost'];
+                        
+                        // Get product code
+                        $product_code = '';
+                        $stmt = executeQuery("SELECT product_code FROM products WHERE id = ?", [$product['product_id']]);
+                        if ($row = $stmt->fetch()) {
+                            $product_code = $row['product_code'];
+                        }
+                        
                         // Insert import detail
-                        $sql = "INSERT INTO import_details (import_id, product_id, product_name, quantity, unit_cost) 
-                                VALUES (?, ?, ?, ?, ?)";
+                        $sql = "INSERT INTO import_details (import_id, product_id, product_code, product_name, quantity, unit_cost, total_cost) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?)";
                         executeQuery($sql, [
                             $importId, 
                             $product['product_id'],
+                            $product_code,
                             $product['product_name'],
                             $product['quantity'],
-                            $product['unit_cost']
+                            $product['unit_cost'],
+                            $total_cost
                         ]);
                         
                         // Update stock
@@ -453,19 +464,25 @@ function selectProduct(select, itemId) {
     const option = select.selectedOptions[0];
     const costInput = document.getElementById(`cost_${itemId}`);
     const quantityInput = select.parentElement.querySelector('input[type="number"]');
+    const totalInput = document.getElementById(`total_${itemId}`);
     
     if (option.value) {
         const importPrice = parseFloat(option.dataset.importPrice) || 0;
         costInput.value = importPrice;
         
+        const quantity = parseInt(quantityInput.value) || 1;
+        const total = importPrice * quantity;
+        totalInput.value = formatCurrency(total);
+        
         updateCartItem(itemId, {
             product_id: option.value,
             product_name: option.dataset.name,
             unit_cost: importPrice,
-            quantity: parseInt(quantityInput.value) || 1
+            quantity: quantity
         });
     } else {
         costInput.value = '';
+        totalInput.value = '';
         removeCartItem(itemId);
     }
     
@@ -573,9 +590,19 @@ function calculateTotal() {
     if (cartItems.length > 0 && supplierName && total > 0) {
         submitBtn.disabled = false;
         submitBtn.style.opacity = '1';
+        submitBtn.title = 'Tạo phiếu nhập';
     } else {
         submitBtn.disabled = true;
         submitBtn.style.opacity = '0.5';
+        
+        // Show appropriate message based on what's missing
+        if (!supplierName) {
+            submitBtn.title = 'Vui lòng nhập tên nhà cung cấp';
+        } else if (cartItems.length === 0) {
+            submitBtn.title = 'Vui lòng thêm ít nhất một sản phẩm';
+        } else if (total <= 0) {
+            submitBtn.title = 'Tổng tiền phải lớn hơn 0';
+        }
     }
 }
 
@@ -824,16 +851,107 @@ function printImport(importId) {
     }
 }
 
+// Delete import
+function deleteImport(importId, importCode) {
+    event.stopPropagation(); // Prevent triggering parent click event
+    
+    if (confirm(`Bạn có chắc chắn muốn xóa phiếu nhập ${importCode}?\nLưu ý: Hành động này sẽ giảm số lượng tồn kho tương ứng.`)) {
+        // Create form and submit
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'index.php?page=imports';
+        form.style.display = 'none';
+        
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'delete_import';
+        
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'import_id';
+        idInput.value = importId;
+        
+        form.appendChild(actionInput);
+        form.appendChild(idInput);
+        document.body.appendChild(form);
+        
+        form.submit();
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     addItemRow();
     showToast('💡 Phím tắt: F2 (Tìm SP), F3 (Thêm SP), Ctrl+Enter (Lưu), Ctrl+R (Reset)', 'info');
+    
+    // Add form submission handler
+    document.getElementById('importForm').addEventListener('submit', function(e) {
+        // Prevent default submission
+        e.preventDefault();
+        
+        // Validate form
+        const supplierName = document.getElementById('supplier_name').value.trim();
+        if (!supplierName) {
+            showToast('Vui lòng nhập tên nhà cung cấp', 'error');
+            document.getElementById('supplier_name').focus();
+            return false;
+        }
+        
+        if (cartItems.length === 0) {
+            showToast('Vui lòng thêm ít nhất một sản phẩm', 'error');
+            return false;
+        }
+        
+        // Show loading state
+        const submitBtn = document.getElementById('submitBtn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '⏳ Đang xử lý...';
+        
+        // Submit the form
+        setTimeout(() => {
+            this.submit();
+        }, 500);
+    });
+    
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // F2 - Focus search
+        if (e.key === 'F2') {
+            e.preventDefault();
+            document.getElementById('productSearch').focus();
+        }
+        
+        // F3 - Add new item row
+        if (e.key === 'F3') {
+            e.preventDefault();
+            addItemRow();
+        }
+        
+        // Ctrl+Enter - Submit form
+        if (e.key === 'Enter' && e.ctrlKey) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            if (!submitBtn.disabled) {
+                submitBtn.click();
+            } else {
+                showToast(submitBtn.title || 'Vui lòng điền đầy đủ thông tin', 'warning');
+            }
+        }
+        
+        // Ctrl+R - Reset form
+        if (e.key === 'r' && e.ctrlKey) {
+            e.preventDefault();
+            resetForm();
+        }
+    });
 });
 
-// Format date function
-if (!function_exists('formatDate')) {
-    function formatDate($dateString) {
-        return date('d/m/Y H:i', strtotime($dateString));
-    }
+// Format date function for JavaScript
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
 }
 </script>
