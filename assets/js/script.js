@@ -385,59 +385,500 @@ function hideLoading(elementId) {
 /**
  * Create modal
  * @param {string} title - Modal title
- * @param {string} content - Modal content
- * @param {function} onSave - Save callback
+ * @param {string} content - Modal content (HTML string)
+ * @param {function} [onSave=null] - Save callback function
+ * @param {string} [modalIdSuffix=''] - Optional suffix for modal ID for uniqueness
  * @return {string} Modal ID
  */
-function createModal(title, content, onSave = null) {
-    const modalId = 'modal_' + Date.now();
-    const modalHtml = `
-        <div id="${modalId}" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>${title}</h3>
-                    <span class="close" onclick="closeModal('${modalId}')">&times;</span>
-                </div>
-                <div class="modal-body">
-                    ${content}
-                </div>
+function createModal(title, content, onSave = null, modalIdSuffix = '') {
+    // Remove any existing modals first to prevent issues if not closed properly
+    const existingModals = document.querySelectorAll('.modal');
+    existingModals.forEach(existingModal => {
+        if (existingModal.parentNode) {
+            // Pass true for immediate removal without transition, as we are opening a new one.
+            closeModal(existingModal.id, true); 
+        }
+    });
+
+    const modalId = 'modal_' + (modalIdSuffix || Date.now());
+    
+    const modalElement = document.createElement('div');
+    modalElement.id = modalId;
+    modalElement.className = 'modal'; // Base class for styling
+    
+    // Construct inner HTML. The 'content' passed is for the modal-body.
+    modalElement.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${title}</h3>
+                <span class="close-button">&times;</span>
             </div>
+            <div class="modal-body">
+                ${content}
+            </div>
+            ${onSave ? `
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary cancel-button">Hủy</button>
+                <button type="button" class="btn btn-primary save-button">Lưu</button>
+            </div>` : ''}
         </div>
     `;
     
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.getElementById(modalId).style.display = 'block';
+    document.body.appendChild(modalElement);
+
+    const closeButton = modalElement.querySelector('.close-button');
+    const saveButton = modalElement.querySelector('.save-button');
+    const cancelButton = modalElement.querySelector('.cancel-button');
+
+    // Handler to close the modal
+    const closeModalHandler = () => closeModal(modalId);
     
-    // Add save button if callback provided
-    if (onSave) {
-        const modalBody = document.querySelector(`#${modalId} .modal-body`);
-        modalBody.insertAdjacentHTML('beforeend', `
-            <div class="form-actions">
-                <button class="btn btn-secondary" onclick="closeModal('${modalId}')">Hủy</button>
-                <button class="btn btn-primary" onclick="handleModalSave('${modalId}')">Lưu</button>
-            </div>
-        `);
-        
-        // Store callback
-        window[`saveCallback_${modalId}`] = onSave;
+    if (closeButton) {
+        closeButton.addEventListener('click', closeModalHandler);
     }
+    if (cancelButton) {
+        cancelButton.addEventListener('click', closeModalHandler);
+    }
+    if (saveButton && typeof onSave === 'function') {
+        saveButton.addEventListener('click', () => {
+            onSave(modalId); // Pass modalId if onSave needs to interact with the modal
+        });
+    }
+
+    // Close on Escape key
+    const escapeKeyListener = (event) => {
+        if (event.key === 'Escape') {
+            // Check if this is the topmost/active modal before closing
+            const allModals = document.querySelectorAll('.modal');
+            if (allModals.length > 0 && allModals[allModals.length - 1].id === modalId) {
+                 closeModal(modalId);
+            }
+        }
+    };
+    document.addEventListener('keydown', escapeKeyListener);
     
+    // Store the listener on the element to remove it specifically when this modal closes
+    modalElement.escapeKeyListener = escapeKeyListener;
+
+    // Make it visible with transition
+    // 1. Set display style that allows visibility (e.g., flex for centering)
+    modalElement.style.display = 'flex'; 
+
+    // 2. Add 'show' class to trigger CSS transition (opacity, transform, etc.)
+    //    Using requestAnimationFrame ensures the 'display' change is applied before 'show' class.
+    requestAnimationFrame(() => {
+        modalElement.classList.add('show');
+    });
+
     return modalId;
 }
 
 /**
  * Close modal
  * @param {string} modalId - Modal ID to close
+ * @param {boolean} [immediate=false] - If true, remove immediately without transition
  */
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-        setTimeout(() => modal.remove(), 300);
-        
-        // Clean up callback
-        if (window[`saveCallback_${modalId}`]) {
-            delete window[`saveCallback_${modalId}`];
+function closeModal(modalId, immediate = false) {
+    const modalElement = document.getElementById(modalId);
+    if (!modalElement) {
+        // console.warn('Modal not found or already removed:', modalId);
+        return;
+    }
+
+    // Remove the specific Escape key listener associated with this modal
+    if (modalElement.escapeKeyListener) {
+        document.removeEventListener('keydown', modalElement.escapeKeyListener);
+        delete modalElement.escapeKeyListener; // Clean up the stored property
+    }
+
+    if (immediate) {
+        if (modalElement.parentNode) {
+            modalElement.parentNode.removeChild(modalElement);
+        }
+        return;
+    }
+
+    modalElement.classList.remove('show'); // Trigger hide transition
+
+    const handleTransitionEnd = (event) => {
+        // Ensure the transitionend event is from the modalElement itself, not a child
+        if (event.target === modalElement) {
+            modalElement.removeEventListener('transitionend', handleTransitionEnd);
+            if (modalElement.parentNode) {
+                modalElement.parentNode.removeChild(modalElement);
+            }
+        }
+    };
+    
+    const modalContentElement = modalElement.querySelector('.modal-content');
+    let transitionDuration = 0;
+    if (modalContentElement) { // Check based on modal-content or modal itself for transition
+        const style = getComputedStyle(modalElement); // Check transition on modal element
+        transitionDuration = parseFloat(style.transitionDuration) * 1000;
+        if (transitionDuration === 0 && modalContentElement) { // Fallback to modal-content if modal has no duration
+             const contentStyle = getComputedStyle(modalContentElement);
+             transitionDuration = parseFloat(contentStyle.transitionDuration) * 1000;
+        }
+    }
+    
+    if (transitionDuration > 0 && !immediate) {
+        modalElement.addEventListener('transitionend', handleTransitionEnd);
+        // Fallback timeout in case transitionend doesn't fire
+        setTimeout(() => {
+            modalElement.removeEventListener('transitionend', handleTransitionEnd); // Clean up
+            if (modalElement.parentNode) {
+                modalElement.parentNode.removeChild(modalElement);
+            }
+        }, transitionDuration + 100); // Add a small buffer
+    } else {
+        // No transition or immediate removal requested
+        if (modalElement.parentNode) {
+            modalElement.parentNode.removeChild(modalElement);
+        }
+    }
+}
+
+/**
+ * Test keyboard shortcuts functionality
+ */
+function testKeyboardShortcuts() {
+    showToast('🧪 Testing phím tắt navigation...', 'info');
+    console.log('Keyboard shortcuts test initiated');
+    
+    // Test each navigation
+    const pages = ['dashboard', 'products', 'sales', 'imports', 'customers', 'returns', 'reports'];
+    let currentTest = 0;
+    
+    function runNextTest() {
+        if (currentTest < pages.length) {
+            const page = pages[currentTest];
+            console.log(`Testing navigation to: ${page}`);
+            showToast(`✅ Test ${currentTest + 1}: ${page}`, 'success');
+            currentTest++;
+            setTimeout(runNextTest, 1000);
+        } else {
+            showToast('🎉 All keyboard shortcut tests completed!', 'success');
+        }
+    }
+    
+    runNextTest();
+}
+
+/**
+ * Add keyboard shortcut indicators to navigation
+ */
+function addKeyboardIndicators() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const shortcuts = ['Alt+1', 'Alt+2', 'Alt+3', 'Alt+4', 'Alt+5', 'Alt+6', 'Alt+7'];
+    
+    navItems.forEach((item, index) => {
+        if (index < shortcuts.length) {
+            // Add shortcut indicator
+            const indicator = document.createElement('span');
+            indicator.textContent = shortcuts[index];
+            indicator.style.cssText = `
+                font-size: 0.75rem;
+                opacity: 0.7;
+                margin-left: 0.5rem;
+                color: var(--accent-color);
+                font-weight: 500;
+            `;
+            item.appendChild(indicator);
+        }
+    });
+}
+
+// Add indicators when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(addKeyboardIndicators, 100);
+    
+    // Add test button to footer for debugging
+    const footer = document.querySelector('.footer');
+    if (footer) {
+        const testBtn = document.createElement('button');
+        testBtn.textContent = '🧪 Test Phím tắt';
+        testBtn.onclick = testKeyboardShortcuts;
+        testBtn.style.cssText = `
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            margin: 1rem;
+            font-size: 0.9rem;
+        `;
+        footer.appendChild(testBtn);
+    }
+});
+
+/**
+ * Show toast notification
+ * @param {string} message - Message to display
+ * @param {string} type - Type: success, error, warning
+ */
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast toast-${type} show`;
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+/**
+ * Format currency VND
+ * @param {number} amount - Amount to format
+ * @return {string} Formatted currency
+ */
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND'
+    }).format(amount);
+}
+
+/**
+ * Format date
+ * @param {string|Date} date - Date to format
+ * @return {string} Formatted date
+ */
+function formatDate(date) {
+    return new Date(date).toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+/**
+ * Validate form data
+ * @param {object} data - Form data to validate
+ * @param {array} required - Required fields
+ * @return {object} Validation result
+ */
+function validateForm(data, required = []) {
+    const errors = [];
+    
+    required.forEach(field => {
+        if (!data[field] || data[field].trim() === '') {
+            errors.push(`${field} không được để trống`);
+        }
+    });
+    
+    // Validate email if present
+    if (data.email && !isValidEmail(data.email)) {
+        errors.push('Email không hợp lệ');
+    }
+    
+    // Validate phone if present
+    if (data.phone && !isValidPhone(data.phone)) {
+        errors.push('Số điện thoại không hợp lệ');
+    }
+    
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
+}
+
+/**
+ * Validate email
+ * @param {string} email - Email to validate
+ * @return {boolean} Is valid
+ */
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+/**
+ * Validate phone number
+ * @param {string} phone - Phone to validate
+ * @return {boolean} Is valid
+ */
+function isValidPhone(phone) {
+    const phoneRegex = /^(0|84|\+84)[3|5|7|8|9][0-9]{8}$/;
+    return phoneRegex.test(phone.replace(/\s/g, ''));
+}
+
+/**
+ * Show loading state
+ * @param {string} elementId - Element to show loading
+ */
+function showLoading(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.classList.add('loading');
+    }
+}
+
+/**
+ * Hide loading state
+ * @param {string} elementId - Element to hide loading
+ */
+function hideLoading(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.classList.remove('loading');
+    }
+}
+
+/**
+ * Create modal
+ * @param {string} title - Modal title
+ * @param {string} content - Modal content (HTML string)
+ * @param {function} [onSave=null] - Save callback function
+ * @param {string} [modalIdSuffix=''] - Optional suffix for modal ID for uniqueness
+ * @return {string} Modal ID
+ */
+function createModal(title, content, onSave = null, modalIdSuffix = '') {
+    // Remove any existing modals first to prevent issues if not closed properly
+    const existingModals = document.querySelectorAll('.modal');
+    existingModals.forEach(existingModal => {
+        if (existingModal.parentNode) {
+            // Pass true for immediate removal without transition, as we are opening a new one.
+            closeModal(existingModal.id, true); 
+        }
+    });
+
+    const modalId = 'modal_' + (modalIdSuffix || Date.now());
+    
+    const modalElement = document.createElement('div');
+    modalElement.id = modalId;
+    modalElement.className = 'modal'; // Base class for styling
+    
+    // Construct inner HTML. The 'content' passed is for the modal-body.
+    modalElement.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${title}</h3>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="modal-body">
+                ${content}
+            </div>
+            ${onSave ? `
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary cancel-button">Hủy</button>
+                <button type="button" class="btn btn-primary save-button">Lưu</button>
+            </div>` : ''}
+        </div>
+    `;
+    
+    document.body.appendChild(modalElement);
+
+    const closeButton = modalElement.querySelector('.close-button');
+    const saveButton = modalElement.querySelector('.save-button');
+    const cancelButton = modalElement.querySelector('.cancel-button');
+
+    // Handler to close the modal
+    const closeModalHandler = () => closeModal(modalId);
+    
+    if (closeButton) {
+        closeButton.addEventListener('click', closeModalHandler);
+    }
+    if (cancelButton) {
+        cancelButton.addEventListener('click', closeModalHandler);
+    }
+    if (saveButton && typeof onSave === 'function') {
+        saveButton.addEventListener('click', () => {
+            onSave(modalId); // Pass modalId if onSave needs to interact with the modal
+        });
+    }
+
+    // Close on Escape key
+    const escapeKeyListener = (event) => {
+        if (event.key === 'Escape') {
+            // Check if this is the topmost/active modal before closing
+            const allModals = document.querySelectorAll('.modal');
+            if (allModals.length > 0 && allModals[allModals.length - 1].id === modalId) {
+                 closeModal(modalId);
+            }
+        }
+    };
+    document.addEventListener('keydown', escapeKeyListener);
+    
+    // Store the listener on the element to remove it specifically when this modal closes
+    modalElement.escapeKeyListener = escapeKeyListener;
+
+    // Make it visible with transition
+    // 1. Set display style that allows visibility (e.g., flex for centering)
+    modalElement.style.display = 'flex'; 
+
+    // 2. Add 'show' class to trigger CSS transition (opacity, transform, etc.)
+    //    Using requestAnimationFrame ensures the 'display' change is applied before 'show' class.
+    requestAnimationFrame(() => {
+        modalElement.classList.add('show');
+    });
+
+    return modalId;
+}
+
+/**
+ * Close modal
+ * @param {string} modalId - Modal ID to close
+ * @param {boolean} [immediate=false] - If true, remove immediately without transition
+ */
+function closeModal(modalId, immediate = false) {
+    const modalElement = document.getElementById(modalId);
+    if (!modalElement) {
+        // console.warn('Modal not found or already removed:', modalId);
+        return;
+    }
+
+    // Remove the specific Escape key listener associated with this modal
+    if (modalElement.escapeKeyListener) {
+        document.removeEventListener('keydown', modalElement.escapeKeyListener);
+        delete modalElement.escapeKeyListener; // Clean up the stored property
+    }
+
+    if (immediate) {
+        if (modalElement.parentNode) {
+            modalElement.parentNode.removeChild(modalElement);
+        }
+        return;
+    }
+
+    modalElement.classList.remove('show'); // Trigger hide transition
+
+    const handleTransitionEnd = (event) => {
+        // Ensure the transitionend event is from the modalElement itself, not a child
+        if (event.target === modalElement) {
+            modalElement.removeEventListener('transitionend', handleTransitionEnd);
+            if (modalElement.parentNode) {
+                modalElement.parentNode.removeChild(modalElement);
+            }
+        }
+    };
+    
+    const modalContentElement = modalElement.querySelector('.modal-content');
+    let transitionDuration = 0;
+    if (modalContentElement) { // Check based on modal-content or modal itself for transition
+        const style = getComputedStyle(modalElement); // Check transition on modal element
+        transitionDuration = parseFloat(style.transitionDuration) * 1000;
+        if (transitionDuration === 0 && modalContentElement) { // Fallback to modal-content if modal has no duration
+             const contentStyle = getComputedStyle(modalContentElement);
+             transitionDuration = parseFloat(contentStyle.transitionDuration) * 1000;
+        }
+    }
+    
+    if (transitionDuration > 0 && !immediate) {
+        modalElement.addEventListener('transitionend', handleTransitionEnd);
+        // Fallback timeout in case transitionend doesn't fire
+        setTimeout(() => {
+            modalElement.removeEventListener('transitionend', handleTransitionEnd); // Clean up
+            if (modalElement.parentNode) {
+                modalElement.parentNode.removeChild(modalElement);
+            }
+        }, transitionDuration + 100); // Add a small buffer
+    } else {
+        // No transition or immediate removal requested
+        if (modalElement.parentNode) {
+            modalElement.parentNode.removeChild(modalElement);
         }
     }
 }
@@ -642,28 +1083,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add smooth scrolling to anchors
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
-            const href = this.getAttribute('href');
-            if (href && href.length > 1 && href !== "#") { // Check if href is not just "#" and has more characters
-                try {
-                    const target = document.querySelector(href);
-                    if (target) {
-                        e.preventDefault(); // Only prevent default if it's a valid internal link
-                        target.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                } catch (error) {
-                    console.warn(`Smooth scroll failed for selector: ${href}`, error);
-                    // Optionally, allow default behavior if querySelector fails for some other reason
-                    // For example, if it's a link to another page that happens to start with #
-                    // but in this context, href^="#" should mostly be internal.
-                }
-            } else if (href === "#") {
-                e.preventDefault(); // Prevent default for href="#" to avoid jumping to top
-                console.log('Anchor with href="#" clicked, default prevented.');
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
             }
-            // If href is not valid or target not found, default browser behavior will apply (e.g., navigating to another page or doing nothing)
         });
     });
     
