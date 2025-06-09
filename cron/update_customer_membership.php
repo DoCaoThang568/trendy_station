@@ -26,9 +26,9 @@ try {
 
     foreach ($customers as $customer) {
         $new_level = 'Thông thường';
-        if ($customer['total_spent'] >= VVIP_MIN_SPENT && $customer['total_orders'] >= VVIP_MIN_ORDERS) {
+        if ($customer['total_spent'] >= VVIP_MIN_SPENT || $customer['total_orders'] >= VVIP_MIN_ORDERS) {
             $new_level = 'VVIP';
-        } elseif ($customer['total_spent'] >= VIP_MIN_SPENT && $customer['total_orders'] >= VIP_MIN_ORDERS) {
+        } elseif ($customer['total_spent'] >= VIP_MIN_SPENT || $customer['total_orders'] >= VIP_MIN_ORDERS) {
             $new_level = 'VIP';
         }
 

@@ -40,7 +40,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notes = $_POST['notes'] ?? '';
                 
                 // Insert import record
-<<<<<<< HEAD
                 $sql = "INSERT INTO imports (import_code, supplier_id, supplier_name, import_date, total_amount, notes, created_by, status) 
                         VALUES (?, ?, ?, NOW(), ?, ?, ?, ?)";
                 
@@ -55,16 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
                 
                 $stmt = executeQuery($sql, $params);
-=======
-                $sql = "INSERT INTO imports (import_code, supplier_id, supplier_name, supplier_phone, 
-                               total_amount, notes, created_by, status) 
-                        VALUES (?, ?, ?, ?, ?, ?, 'admin', 'Hoàn thành')";
-                
-                $stmt = executeQuery($sql, [
-                    $importCode, $supplier_id, $supplier_name, $supplier_phone,
-                    $total_amount, $notes
-                ]);
->>>>>>> aba1d7836eb6fc747e909bf48a6c861c05368e77
                 
                 $importId = $pdo->lastInsertId();
                 

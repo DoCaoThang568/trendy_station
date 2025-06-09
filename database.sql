@@ -434,5 +434,100 @@ CREATE INDEX idx_imports_date_range ON imports(import_date, status);
 CREATE INDEX idx_customers_phone_email ON customers(phone, email);
 
 -- ========================================
+-- STORED PROCEDURES FOR MEMBERSHIP UPDATE
+-- ========================================
+DROP PROCEDURE IF EXISTS UpdateCustomerMembership;
+DELIMITER $$
+CREATE PROCEDURE UpdateCustomerMembership(IN p_customer_id INT)
+BEGIN
+    DECLARE v_total_spent DECIMAL(15,2);
+    DECLARE v_total_orders INT;
+    DECLARE v_current_membership_level VARCHAR(20);
+    DECLARE v_new_membership_level VARCHAR(20) DEFAULT 'Thông thường';
+
+    -- Membership thresholds (mirroring cron/update_customer_membership.php)
+    DECLARE VVIP_MIN_SPENT_THRESH DECIMAL(15,2) DEFAULT 10000000;
+    DECLARE VVIP_MIN_ORDERS_THRESH INT DEFAULT 15;
+    DECLARE VIP_MIN_SPENT_THRESH DECIMAL(15,2) DEFAULT 5000000;
+    DECLARE VIP_MIN_ORDERS_THRESH INT DEFAULT 10;
+
+    -- Get current stats and membership level for the customer
+    SELECT total_spent, total_orders, membership_level
+    INTO v_total_spent, v_total_orders, v_current_membership_level
+    FROM customers
+    WHERE id = p_customer_id;
+
+    -- Determine new membership level
+    IF v_total_spent >= VVIP_MIN_SPENT_THRESH OR v_total_orders >= VVIP_MIN_ORDERS_THRESH THEN
+        SET v_new_membership_level = 'VVIP';
+    ELSEIF v_total_spent >= VIP_MIN_SPENT_THRESH OR v_total_orders >= VIP_MIN_ORDERS_THRESH THEN
+        SET v_new_membership_level = 'VIP';
+    END IF;
+
+    -- Update customer record
+    IF v_new_membership_level <> v_current_membership_level THEN
+        UPDATE customers
+        SET membership_level = v_new_membership_level,
+            last_membership_update = NOW()
+        WHERE id = p_customer_id;
+    ELSE
+        -- Even if level doesn't change, update the check timestamp
+        UPDATE customers
+        SET last_membership_update = NOW()
+        WHERE id = p_customer_id;
+    END IF;
+END$$ 
+DELIMITER ;
+
+-- ========================================
+-- TRIGGERS FOR AUTOMATIC MEMBERSHIP UPDATE
+-- ========================================
+
+-- Trigger after a new sale is inserted to update order count and membership
+DROP TRIGGER IF EXISTS trg_after_sale_insert_update_customer_stats;
+DELIMITER $$
+CREATE TRIGGER trg_after_sale_insert_update_customer_stats
+AFTER INSERT ON sales
+FOR EACH ROW
+BEGIN
+    IF NEW.customer_id IS NOT NULL THEN
+        -- Update total_orders for the customer
+        UPDATE customers
+        SET total_orders = total_orders + 1
+        WHERE id = NEW.customer_id;
+
+        -- Call procedure to update membership level
+        CALL UpdateCustomerMembership(NEW.customer_id);
+    END IF;
+END$$
+DELIMITER ;
+
+-- Trigger after a new sale detail is inserted to update total spent and membership
+DROP TRIGGER IF EXISTS trg_after_sale_detail_insert_update_customer_stats;
+DELIMITER $$
+CREATE TRIGGER trg_after_sale_detail_insert_update_customer_stats
+AFTER INSERT ON sale_details
+FOR EACH ROW
+BEGIN
+    DECLARE v_customer_id INT;
+
+    -- Get customer_id from the sales table
+    SELECT customer_id INTO v_customer_id
+    FROM sales
+    WHERE id = NEW.sale_id;
+
+    IF v_customer_id IS NOT NULL THEN
+        -- Update total_spent for the customer
+        UPDATE customers
+        SET total_spent = total_spent + NEW.final_price
+        WHERE id = v_customer_id;
+
+        -- Call procedure to update membership level
+        CALL UpdateCustomerMembership(v_customer_id);
+    END IF;
+END$$
+DELIMITER ;
+
+-- ========================================
 -- COMPLETED SUCCESSFULLY
 -- ========================================
