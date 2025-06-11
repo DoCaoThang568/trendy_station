@@ -414,9 +414,13 @@ Dashboard Debug Info:
         /* Dashboard Grid */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 2fr 1fr; /* Default for chart/top products */
             gap: 2rem;
             margin-bottom: 2rem;
+        }
+
+        .recent-transactions-grid { /* New rule for equal columns */
+            grid-template-columns: 1fr 1fr;
         }
 
         .dashboard-card {
@@ -923,7 +927,7 @@ Dashboard Debug Info:
     <?php endif; ?>
 
     <!-- Recent Transactions -->
-    <div class="dashboard-grid">
+    <div class="dashboard-grid recent-transactions-grid">
         <!-- Recent Sales -->
         <div class="dashboard-card">
             <div class="card-header">
