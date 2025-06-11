@@ -164,9 +164,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     header('Content-Type: application/json');
-                    
-                    // Prepare additional data for dynamic update
-                    $formatted_sale_date = date('d/m/Y H:i'); // Current time as sale date
+                      // Prepare additional data for dynamic update
+                    $formatted_sale_date = date('d/m/Y H:i:s', time()); // Current Vietnam time as sale date
                     
                     // Translate payment method for display
                     $payment_method_display = translatePaymentMethod($payment_method);
@@ -1092,6 +1091,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Format date helper
 function formatDate(dateString) {
-    return new Date(dateString).toLocaleString('vi-VN');
+    const date = new Date(dateString);
+    // Ensure we display in Vietnam timezone
+    return date.toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
 }
 </script>

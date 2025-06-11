@@ -11,7 +11,17 @@ if (!function_exists('formatDate')) {
         if (empty($dateString) || $dateString === '0000-00-00 00:00:00') {
             return ''; // Or some other placeholder for invalid/empty dates
         }
-        return date('d/m/Y H:i', strtotime($dateString));
+        
+        // Ensure Vietnam timezone is used
+        $originalTimezone = date_default_timezone_get();
+        date_default_timezone_set('Asia/Ho_Chi_Minh');
+        
+        $formatted = date('d/m/Y H:i:s', strtotime($dateString));
+        
+        // Restore original timezone
+        date_default_timezone_set($originalTimezone);
+        
+        return $formatted;
     }
 }
 

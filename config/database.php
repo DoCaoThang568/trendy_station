@@ -21,9 +21,12 @@ $config = [
 try {
     $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
     $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options']);
-    
-    // Set charset
+      // Set charset and timezone
     $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $pdo->exec("SET time_zone = '+07:00'"); // Vietnam timezone
+    
+    // Set PHP timezone to match
+    date_default_timezone_set('Asia/Ho_Chi_Minh');
     
 } catch (PDOException $e) {
     die('Database connection failed: ' . $e->getMessage());

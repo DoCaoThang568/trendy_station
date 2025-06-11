@@ -1429,7 +1429,15 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
                         <p><i class="fas fa-venus-mars fa-fw me-2 text-info"></i>${customer.gender || 'N/A'}</p>
                         <p><i class="fas fa-map-marker-alt fa-fw me-2 text-danger"></i>${customer.address || 'N/A'}</p>
                         <p class="mt-2"><em><i class="fas fa-sticky-note fa-fw me-2 text-secondary"></i>${customer.notes || 'Không có ghi chú'}</em></p>
-                        <p class="small text-muted mt-3">Ngày tạo: ${customer.created_at ? new Date(customer.created_at).toLocaleString('vi-VN') : 'N/A'}</p>
+                        <p class="small text-muted mt-3">Ngày tạo: ${customer.created_at ? new Date(customer.created_at).toLocaleString('vi-VN', {
+                            timeZone: 'Asia/Ho_Chi_Minh',
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        }) : 'N/A'}</p>
                     </div>
                     <div class="col-lg-8 ps-lg-4">
                         <h6 class="text-muted mb-3"><i class="fas fa-chart-line me-2"></i>Thống kê & Hoạt động</h6>
