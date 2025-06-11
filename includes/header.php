@@ -27,10 +27,10 @@
             <div class="nav-item <?php echo (isset($current_page) && $current_page == 'products') ? 'active' : ''; ?>" onclick="location.href='index.php?page=products'">
                 📦 Sản phẩm
             </div>
-            <div class="nav-item <?php echo (isset($current_page) && ($current_page == 'sales' || $current_page == 'all_sales')) ? 'active' : ''; ?>" onclick="location.href='index.php?page=sales'">
+            <div class="nav-item <?php echo (isset($current_page) && $current_page == 'sales') ? 'active' : ''; ?>" onclick="location.href='index.php?page=sales'">
                 💰 Bán hàng
             </div>
-            <div class="nav-item <?php echo (isset($current_page) && ($current_page == 'imports' || $current_page == 'all_imports')) ? 'active' : ''; ?>" onclick="location.href='index.php?page=imports'">
+            <div class="nav-item <?php echo (isset($current_page) && $current_page == 'imports') ? 'active' : ''; ?>" onclick="location.href='index.php?page=imports'">
                 📥 Nhập hàng
             </div>
             <div class="nav-item <?php echo (isset($current_page) && $current_page == 'customers') ? 'active' : ''; ?>" onclick="location.href='index.php?page=customers'">
@@ -48,12 +48,3 @@
         </nav>
     </div>    <!-- Main Content -->
     <div class="main-content">
-
-<script>
-// Logout function
-function logout() {
-    if (confirm('Bạn có chắc chắn muốn thoát không?')) {
-        window.location.href = 'index.php?action=logout';
-    }
-}
-</script>

@@ -469,14 +469,9 @@ $newSaleCode = generateCode('HD', 'sales', 'sale_code');
                                 <?php echo $paymentMethodDisplay; ?>
                             </span>
                         </div>
-                    </div>                <?php endforeach; ?>
+                    </div>
+                <?php endforeach; ?>
             <?php endif; ?>
-            <!-- Nút xem tất cả hóa đơn -->
-            <div style="padding: 1rem 1.5rem; border-top: 2px solid var(--primary-color); background: var(--bg-secondary);">
-                <button class="btn btn-primary" onclick="location.href='index.php?page=all_sales'" style="width: 100%; font-weight: 600;">
-                    📋 Xem tất cả hóa đơn
-                </button>
-            </div>
         </div>
     </div>
 </div>

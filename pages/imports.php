@@ -385,14 +385,9 @@ $newImportCode = generateCode('PN', 'imports', 'import_code');
                                     <?php echo $paymentDisplay; ?>
                                 </span>                            </div>
                         </div>
-                    </div>                <?php endforeach; ?>
+                    </div>
+                <?php endforeach; ?>
             <?php endif; ?>
-            <!-- Nút xem tất cả phiếu nhập -->
-            <div style="padding: 1rem 1.5rem; border-top: 2px solid var(--success-color); background: var(--bg-secondary);">
-                <button class="btn btn-success" onclick="location.href='index.php?page=all_imports'" style="width: 100%; font-weight: 600;">
-                    📦 Xem tất cả phiếu nhập
-                </button>
-            </div>
         </div>
     </div>
 </div>
