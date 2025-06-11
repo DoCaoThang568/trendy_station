@@ -29,7 +29,9 @@ $page_titles = [
     'dashboard' => '🏠 Tổng quan',
     'products' => '📦 Quản lý Sản phẩm',
     'sales' => '💰 Bán hàng',
+    'all_sales' => '📋 Tất cả hóa đơn',
     'imports' => '📥 Nhập hàng',
+    'all_imports' => '📋 Tất cả phiếu nhập',
     'customers' => '👥 Quản lý Khách hàng',
     'returns' => '↩️ Trả hàng',
     'reports' => '📊 Báo cáo'
@@ -51,8 +53,14 @@ switch ($page) {
     case 'sales':
         include 'pages/sales.php';
         break;
+    case 'all_sales':
+        include 'pages/all_sales.php';
+        break;
     case 'imports':
         include 'pages/imports.php';
+        break;
+    case 'all_imports':
+        include 'pages/all_imports.php';
         break;
     case 'customers':
         include 'pages/customers.php';

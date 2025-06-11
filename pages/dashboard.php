@@ -614,11 +614,24 @@ Dashboard Debug Info:
             transition: var(--transition);
             font-size: 0.875rem;
             margin: 0 0.25rem;
+            text-decoration: none;
         }
 
         .btn-view {
             background: var(--info-color);
             color: var(--white);
+        }
+
+        /* Enhanced styling for "View All" buttons */
+        .card-header .btn-action {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-header .btn-action:hover {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+            transform: scale(1.15);
+            box-shadow: var(--shadow-md);
         }
 
         .btn-print {
