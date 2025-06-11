@@ -3,15 +3,24 @@
  * Products Page - Quản lý sản phẩm
  */
 
-// Add some debugging
-error_log("POST data received: " . print_r($_POST, true));
-
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $isAjax = isset($_POST['ajax']) || isset($_SERVER['HTTP_X_REQUESTED_WITH']);
     
+    // If this is an AJAX request, clean any output buffers and set JSON header
+    if ($isAjax) {
+        // Clean any existing output buffers
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        // Start new buffer for clean JSON output
+        ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    
     switch ($action) {        case 'add_product':
+            global $pdo; // Make PDO available
             $product_code = $_POST['product_code'] ?? '';
             $name = $_POST['name'] ?? '';
             $category_id = $_POST['category_id'] ?? '';
@@ -28,23 +37,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 executeQuery($sql, [$product_code, $name, $category_id, $size, $color, $cost_price, $selling_price, $stock_quantity, $description]);
                 
                 // Get the ID of the newly inserted product
-                $newProductId = getLastInsertId();
+                $newProductId = $pdo->lastInsertId();
                 
                 if ($isAjax) {
-                    header('Content-Type: application/json');
+                    // Clean any unwanted output
+                    ob_clean();
                     echo json_encode([
                         'success' => true, 
                         'message' => 'Thêm sản phẩm thành công!',
                         'product_id' => $newProductId
                     ]);
+                    ob_end_flush();
                     exit;
                 } else {
                     $_SESSION['success_message'] = 'Thêm sản phẩm thành công!';
                 }
             } catch (Exception $e) {
                 if ($isAjax) {
-                    header('Content-Type: application/json');
+                    // Clean any unwanted output  
+                    ob_clean();
                     echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+                    ob_end_flush();
                     exit;
                 } else {
                     $_SESSION['error_message'] = 'Lỗi: ' . $e->getMessage();
@@ -52,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'edit_product':
+            global $pdo; // Make PDO available
             $id = $_POST['id'] ?? '';
             $product_code = $_POST['product_code'] ?? '';
             $name = $_POST['name'] ?? '';
@@ -80,16 +94,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 executeQuery($sql, [$product_code, $name, $category_id, $size, $color, $cost_price, $selling_price, $stock_quantity, $description, $is_active, $id]);
                 
                 if ($isAjax) {
-                    header('Content-Type: application/json');
+                    // Clean any unwanted output
+                    ob_clean();
                     echo json_encode(['success' => true, 'message' => 'Cập nhật sản phẩm thành công!']);
+                    ob_end_flush();
                     exit;
                 } else {
                     $_SESSION['success_message'] = 'Cập nhật sản phẩm thành công!';
                 }
             } catch (Exception $e) {
                 if ($isAjax) {
-                    header('Content-Type: application/json');
+                    // Clean any unwanted output
+                    ob_clean();
                     echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+                    ob_end_flush();
                     exit;
                 } else {
                     $_SESSION['error_message'] = 'Lỗi: ' . $e->getMessage();
@@ -97,22 +115,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             break;
               case 'delete_product':
+            global $pdo; // Make PDO available
             $id = $_POST['id'];
             
             try {
                 executeQuery("DELETE FROM products WHERE id = ?", [$id]);
                 
                 if ($isAjax) {
-                    header('Content-Type: application/json');
+                    // Clean any unwanted output
+                    ob_clean();
                     echo json_encode(['success' => true, 'message' => 'Xóa sản phẩm thành công!']);
+                    ob_end_flush();
                     exit;
                 } else {
                     $_SESSION['success_message'] = 'Xóa sản phẩm thành công!';
                 }
             } catch (Exception $e) {
                 if ($isAjax) {
-                    header('Content-Type: application/json');
+                    // Clean any unwanted output
+                    ob_clean();
                     echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+                    ob_end_flush();
                     exit;
                 } else {
                     $_SESSION['error_message'] = 'Lỗi: ' . $e->getMessage();
@@ -805,17 +828,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 const formData = new FormData(this);
                 formData.append('ajax', '1');
 
+                console.log('Submitting form with action:', action);
+                console.log('Form data:', Object.fromEntries(formData));
+
                 const response = await fetch('index.php?page=products', {
                     method: 'POST',
                     body: formData
                 });
 
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers));
+
                 if (!response.ok) {
                     const errorText = await response.text();
+                    console.error('HTTP error response:', errorText);
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
-                const result = await response.json();
+                const responseText = await response.text();
+                console.log('Raw response text:', responseText);
+
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                    console.log('Parsed JSON result:', result);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    console.error('Response text that failed to parse:', responseText);
+                    throw new Error('Server returned invalid JSON. Response: ' + responseText.substring(0, 200) + '...');
+                }
 
                 if (result.success) {
                     showToast(result.message, 'success');
