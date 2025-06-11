@@ -1021,7 +1021,7 @@ Dashboard Debug Info:
                                             <div class="invoice-code"><?= htmlspecialchars($import['import_code']) ?></div>
                                             <small><?= date('d/m H:i', strtotime($import['import_date'])) ?></small>
                                         </td>
-                                        <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <td style="word-break: break-word; min-width: 150px;">
                                             <?= htmlspecialchars($import['supplier_name'] ?: ($import['supplier_name_db'] ?: 'N/A')) ?>
                                         </td>
                                         <td>
