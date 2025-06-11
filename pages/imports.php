@@ -188,11 +188,10 @@ $products_stmt = $pdo->query("
         p.stock_quantity, 
         p.cost_price as import_price, /* Use cost_price and alias it as import_price */
         p.selling_price,
-        c.name as category_name
-    FROM products p
+        c.name as category_name    FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
     WHERE p.is_active = 1
-    ORDER BY p.name ASC
+    ORDER BY p.product_code ASC, p.name ASC
 ");
 $products = $products_stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -392,6 +391,13 @@ function searchProducts(query) {
             p.product_code.toLowerCase().includes(query) ||
             (p.category_name && p.category_name.toLowerCase().includes(query))
         );
+        
+        // Sort filtered results by product_code, then by name
+        filtered.sort((a, b) => {
+            const codeCompare = a.product_code.localeCompare(b.product_code);
+            return codeCompare !== 0 ? codeCompare : a.name.localeCompare(b.name);
+        });
+        
         products.splice(0, products.length, ...filtered);
     }
     
