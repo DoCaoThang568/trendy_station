@@ -181,10 +181,11 @@ function formatVietnameseDate($dateString) {
             font-weight: 600;
             color: white;
         }
-        
-        .payment-cash { background: #27ae60; }
+          .payment-cash { background: #27ae60; }
         .payment-card { background: #3498db; }
         .payment-bank { background: #9b59b6; }
+        .payment-ewallet { background: #f39c12; }
+        .payment-default { background: #7f8c8d; }
         
         .products-section {
             margin: 2rem 0;
@@ -548,21 +549,42 @@ function formatVietnameseDate($dateString) {
                     </div>
                     <div class="meta-item">
                         <span class="meta-label">Thanh toán:</span>
-                        <span class="meta-value">
-                            <span class="payment-badge <?php 
-                                switch($sale['payment_method']) {
-                                    case 'cash': echo 'payment-cash'; break;
-                                    case 'card': echo 'payment-card'; break;
-                                    case 'bank_transfer': echo 'payment-bank'; break;
-                                    default: echo 'payment-cash';
+                        <span class="meta-value">                            <span class="payment-badge <?php 
+                                switch(strtolower($sale['payment_method'])) {
+                                    case 'cash':
+                                    case 'tiền mặt': 
+                                        echo 'payment-cash'; break;
+                                    case 'card':
+                                    case 'thẻ tín dụng': 
+                                        echo 'payment-card'; break;
+                                    case 'transfer':
+                                    case 'chuyển khoản':
+                                    case 'bank_transfer': 
+                                        echo 'payment-bank'; break;
+                                    case 'e-wallet':
+                                    case 'ví điện tử':
+                                        echo 'payment-ewallet'; break;
+                                    default: 
+                                        echo 'payment-default';
                                 }
                             ?>">
                                 <?php 
-                                switch($sale['payment_method']) {
-                                    case 'cash': echo '💵 Tiền mặt'; break;
-                                    case 'card': echo '💳 Thẻ'; break;
-                                    case 'bank_transfer': echo '🏦 Chuyển khoản'; break; 
-                                    default: echo htmlspecialchars($sale['payment_method']);
+                                switch(strtolower($sale['payment_method'])) {
+                                    case 'cash':
+                                    case 'tiền mặt': 
+                                        echo '💵 Tiền mặt'; break;
+                                    case 'card':
+                                    case 'thẻ tín dụng': 
+                                        echo '💳 Thẻ tín dụng'; break;
+                                    case 'transfer':
+                                    case 'chuyển khoản':
+                                    case 'bank_transfer': 
+                                        echo '🏦 Chuyển khoản'; break;
+                                    case 'e-wallet':
+                                    case 'ví điện tử':
+                                        echo '📱 Ví điện tử'; break;
+                                    default: 
+                                        echo htmlspecialchars($sale['payment_method']);
                                 }
                                 ?>
                             </span>

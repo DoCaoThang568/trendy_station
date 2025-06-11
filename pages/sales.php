@@ -341,13 +341,13 @@ $newSaleCode = generateCode('HD', 'sales', 'sale_code');
                            title="Nhập số điện thoại để tự động tìm khách hàng có sẵn">
                     <div class="quick-add-hint">💡 Nhập từ 4 số để tự động tìm khách hàng</div>
                 </div>
-                
-                <div class="form-group">
+                  <div class="form-group">
                     <label for="payment_method">Phương thức thanh toán</label>
                     <select name="payment_method" id="payment_method">
-                        <option value="cash">💵 Tiền mặt</option>
-                        <option value="card">💳 Thẻ</option>
-                        <option value="transfer">🏦 Chuyển khoản</option>
+                        <option value="Tiền mặt">💵 Tiền mặt</option>
+                        <option value="Thẻ tín dụng">💳 Thẻ tín dụng</option>
+                        <option value="Chuyển khoản">🏦 Chuyển khoản</option>
+                        <option value="Ví điện tử">📱 Ví điện tử</option>
                     </select>
                 </div>
             </div>
