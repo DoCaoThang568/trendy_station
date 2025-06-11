@@ -34,14 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // For now, fetched_supplier_name will remain null, which is acceptable
                         // as the primary link is supplier_id.
                     }
-                }
-
-                $total_amount = floatval($_POST['total_amount'] ?? 0);
+                }                $total_amount = floatval($_POST['total_amount'] ?? 0);
                 $notes = $_POST['notes'] ?? '';
+                $payment_status = $_POST['payment_status'] ?? 'pending';
                 
                 // Insert import record
-                $sql = "INSERT INTO imports (import_code, supplier_id, supplier_name, import_date, total_amount, notes, created_by, status) 
-                        VALUES (?, ?, ?, NOW(), ?, ?, ?, ?)";
+                $sql = "INSERT INTO imports (import_code, supplier_id, supplier_name, import_date, total_amount, notes, created_by, status, payment_status) 
+                        VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?)";
                 
                 $params = [
                     $importCode, 
@@ -50,7 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $total_amount, 
                     $notes,
                     'admin',        // created_by
-                    'Hoàn thành'    // status
+                    'Hoàn thành',   // status
+                    $payment_status // payment_status
                 ];
                 
                 $stmt = executeQuery($sql, $params);
@@ -341,14 +341,33 @@ $newImportCode = generateCode('PN', 'imports', 'import_code');
                                     ?>; color: white; padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem;">
                                     <?php 
                                     // Use $import['status'] for display text
-                                    switch($import['status']) {
-                                        case 'Hoàn thành': echo '✅ Hoàn thành'; break;
+                                    switch($import['status']) {                                        case 'Hoàn thành': echo '✅ Hoàn thành'; break;
                                         case 'Đang xử lý': echo '⏳ Đang xử lý'; break;
                                         case 'Đã hủy': echo '❌ Đã hủy'; break;
                                         default: echo htmlspecialchars($import['status']); // Fallback
                                     }
                                     ?>
-                                </span>                                <div style="display: flex; gap: 0.3rem;">
+                                </span>
+                                <span style="background: 
+                                    <?php 
+                                    // Payment status colors
+                                    switch($import['payment_status'] ?? 'pending') {
+                                        case 'paid': echo 'var(--success-gradient)'; break;
+                                        case 'partial': echo 'var(--warning-gradient)'; break;
+                                        case 'pending': echo 'var(--danger-gradient)'; break;
+                                        default: echo 'var(--secondary-gradient)';
+                                    }
+                                    ?>; color: white; padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem;">
+                                    <?php 
+                                    // Payment status display
+                                    switch($import['payment_status'] ?? 'pending') {
+                                        case 'paid': echo '💰 Đã TT'; break;
+                                        case 'partial': echo '💸 TT một phần'; break;
+                                        case 'pending': echo '⏳ Chưa TT'; break;
+                                        default: echo htmlspecialchars($import['payment_status'] ?? 'N/A');                                    }
+                                    ?>
+                                </span>
+                                <div style="display: flex; gap: 0.3rem;">
                                     <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); viewImportDetail(<?php echo $import['id']; ?>)" title="Xem chi tiết (Enter)">
                                         👁️
                                     </button>
@@ -730,10 +749,16 @@ function showImportDetailModal(importData, details) {
                     <div class="import-info">
                         <h4>📝 Thông tin phiếu nhập</h4>
                         <p><strong>Mã phiếu:</strong> ${importData.import_code}</p>
-                        <p><strong>Ngày nhập:</strong> ${importData.created_at_formatted}</p>
-                        <p><strong>Tình trạng:</strong> 
+                        <p><strong>Ngày nhập:</strong> ${importData.created_at_formatted}</p>                        <p><strong>Tình trạng:</strong> 
                             <span class="badge ${importData.status === 'Hoàn thành' ? 'success' : importData.status === 'Đang xử lý' ? 'warning' : 'danger'}">
                                 ${importData.status || 'Không rõ'}
+                            </span>
+                        </p>
+                        <p><strong>Thanh toán:</strong> 
+                            <span class="badge ${importData.payment_status === 'paid' ? 'success' : importData.payment_status === 'partial' ? 'warning' : 'danger'}">
+                                ${importData.payment_status === 'paid' ? '💰 Đã thanh toán' : 
+                                  importData.payment_status === 'partial' ? '💸 Thanh toán một phần' : 
+                                  '⏳ Chưa thanh toán'}
                             </span>
                         </p>
                         <p><strong>Ghi chú:</strong> ${importData.notes || 'Không có ghi chú'}</p>

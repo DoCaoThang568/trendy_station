@@ -217,6 +217,7 @@ CREATE TABLE imports (
     import_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100) DEFAULT 'Admin',
     status ENUM('Đang xử lý', 'Hoàn thành', 'Đã hủy') DEFAULT 'Hoàn thành',
+    payment_status ENUM('pending', 'partial', 'paid') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL,
