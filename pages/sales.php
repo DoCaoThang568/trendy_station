@@ -357,7 +357,7 @@ $newSaleCode = generateCode('HD', 'sales', 'sale_code');
                     <div style="display: flex; gap: 0.5rem;">                        <input type="text" id="productSearch" placeholder="🔍 Tìm sản phẩm... (F2)" 
                                style="width: 200px;" onkeyup="searchProducts(this.value)"
                                title="Nhập mã hoặc tên sản phẩm để tìm kiếm. Nhấn Enter để thêm nhanh sản phẩm theo mã.">
-                        <button type="button" class="btn btn-secondary" onclick="addItemRow()" title="Thêm dòng sản phẩm mới (F3)">>
+                        <button type="button" class="btn btn-secondary" onclick="addItemRow()" title="Thêm dòng sản phẩm mới (F3)">
                             ➕ Thêm sản phẩm
                         </button>
                     </div>
