@@ -407,19 +407,19 @@ INSERT INTO customers VALUES
 
 ---
 
-### TC-SALE-010: Auto-save draft
-**Mục tiêu:** Verify auto-save functionality
+### TC-SALE-010: Form validation
+**Mục tiêu:** Verify form validation functionality
 **Pre-condition:** Trang bán hàng đã load
 **Steps:**
-1. Chọn khách hàng
-2. Thêm 1 sản phẩm
-3. Chờ 30 giây hoặc reload trang
-4. Kiểm tra dữ liệu khôi phục
+1. Để trống tên khách hàng và thử submit
+2. Thêm sản phẩm với số lượng = 0
+3. Thêm sản phẩm với số lượng > tồn kho
+4. Kiểm tra validation message
 
 **Expected Result:**
-- ✅ Sau 30s: "Draft đã được lưu" toast
-- ✅ Reload trang → Data khôi phục
-- ✅ LocalStorage có key 'sales_draft'
+- ✅ Form không submit khi thiếu thông tin bắt buộc
+- ✅ Warning khi số lượng = 0 hoặc > tồn kho
+- ✅ Toast hiển thị message validation phù hợp
 
 ---
 
@@ -463,7 +463,7 @@ INSERT INTO customers VALUES
 **Expected Result:**
 - ✅ Confirm dialog: "Bạn có muốn reset form?"
 - ✅ Đồng ý → Form về trạng thái ban đầu
-- ✅ Draft localStorage bị xóa
+- ✅ Tất cả fields được xóa sạch
 
 ---
 

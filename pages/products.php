@@ -195,7 +195,7 @@ $newProductCode = generateCode('SP', 'products', 'product_code');
 <div class="toolbar">    <div class="search-box">
         <input type="text" id="productSearch" placeholder="Tìm theo tên, mã, danh mục, size, màu... (F3)" value="<?php echo htmlspecialchars($search); ?>" title="Tìm kiếm sản phẩm theo bất kỳ thông tin nào. Nhấn Escape để xóa bộ lọc.">
     </div>
-    <button class="btn btn-primary" onclick="openProductModal()">
+    <button class="btn btn-primary" onclick="openProductModal()" id="addProductBtn">
         ➕ Thêm sản phẩm
     </button>
 </div>
@@ -270,7 +270,7 @@ $newProductCode = generateCode('SP', 'products', 'product_code');
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTitle">➕ Thêm sản phẩm mới</h3>
-            <span class="close" onclick="closeModal('productModal')">&times;</span>
+            <span class="close" onclick="closeProductModal('productModal')">&times;</span>
         </div>
         <div class="modal-body">
             <form method="POST" id="productForm">
@@ -333,7 +333,7 @@ $newProductCode = generateCode('SP', 'products', 'product_code');
                 </div>
                 
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('productModal')">Hủy</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeProductModal('productModal')">Hủy</button>
                     <button type="submit" class="btn btn-primary">💾 Lưu sản phẩm</button>
                 </div>
             </form>
@@ -445,7 +445,43 @@ document.getElementById('productSearch').addEventListener('keydown', function(e)
 
 // Open product modal
 function openProductModal() {
-    const modal = document.getElementById('productModal');
+    console.log('openProductModal called');
+    
+    let modal = document.getElementById('productModal');
+    console.log('Modal element found:', modal);
+    
+    if (!modal) {
+        console.warn('Modal element not found! Attempting to recreate...');
+        // Try to recreate modal if it was removed
+        const modalHtml = `
+            <div id="productModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="modalTitle">➕ Thêm sản phẩm mới</h3>
+                        <span class="close" onclick="closeProductModal('productModal')">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form method="POST" id="productForm">
+                            <input type="hidden" name="action" value="add_product">
+                            <input type="hidden" name="id" id="productId">
+                            <!-- Form fields would need to be recreated here -->
+                            <p>Modal was recreated. Please refresh the page for full functionality.</p>
+                            <button type="button" class="btn btn-secondary" onclick="location.reload()">Refresh Page</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById('productModal');
+        
+        if (!modal) {
+            console.error('Failed to recreate modal!');
+            alert('Có lỗi với modal. Vui lòng refresh trang.');
+            return;
+        }
+    }
+    
     const modalTitle = document.getElementById('modalTitle');
     const productForm = document.getElementById('productForm');
     const actionInput = document.querySelector('[name="action"]');
@@ -453,7 +489,10 @@ function openProductModal() {
     const productCode = document.getElementById('product_code');
     
     // Reset form and set for adding new product
-    if (productForm) productForm.reset();
+    if (productForm) {
+        productForm.reset();
+        console.log('Form reset');
+    }
     if (modalTitle) modalTitle.textContent = '➕ Thêm sản phẩm mới';
     if (actionInput) actionInput.value = 'add_product';
     if (productId) productId.value = '';
@@ -467,15 +506,27 @@ function openProductModal() {
         if (isActiveLabel) isActiveLabel.style.display = 'none';
     }
     
-    // Show modal
-    if (modal) {
-        modal.style.display = 'block';
-        // Focus first input
-        setTimeout(() => {
-            const nameField = document.getElementById('name');
-            if (nameField) nameField.focus();
-        }, 100);
-    }
+    // Show modal with force display
+    modal.style.display = 'block';
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
+    
+    // Check computed styles
+    const computedStyle = window.getComputedStyle(modal);
+    console.log('Modal computed display:', computedStyle.display);
+    console.log('Modal computed visibility:', computedStyle.visibility);
+    console.log('Modal computed opacity:', computedStyle.opacity);
+    
+    console.log('Modal should be visible now. Display:', modal.style.display);
+    
+    // Focus first input
+    setTimeout(() => {
+        const nameField = document.getElementById('name');
+        if (nameField) {
+            nameField.focus();
+            console.log('Focus set to name field');
+        }
+    }, 100);
 }
 
 // Edit product
@@ -581,16 +632,23 @@ async function deleteProduct(id, name) {
     }
 }
 
-// Close modal
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+// Close modal (renamed to avoid conflict with script.js)
+function closeProductModal(modalId) {
+    console.log('closeProductModal called for:', modalId);
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        console.log('Modal closed successfully');
+    } else {
+        console.error('Modal not found:', modalId);
+    }
 }
 
 // Close modal when clicking outside
 window.onclick = function(event) {
     const modal = document.getElementById('productModal');
     if (event.target === modal) {
-        closeModal('productModal');
+        closeProductModal('productModal');
     }
 }
 
@@ -619,7 +677,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         const modal = document.getElementById('productModal');
         if (modal && modal.style.display === 'block') {
-            closeModal('productModal');
+            closeProductModal('productModal');
             showToast('Đóng modal (Esc)', 'info');
         }
         return;
@@ -802,17 +860,30 @@ function sortTableByProductCode() {
 
 // Single DOMContentLoaded listener for page initialization
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    
     const modal = document.getElementById('productModal');
     if (modal) {
         modal.style.display = 'none';
-        // console.log('Modal hidden on page load'); // Optional: for debugging
+        console.log('Modal found and hidden on page load');
     } else {
-        // console.error('Modal not found on page load'); // Optional: for debugging
+        console.error('Modal not found on page load');
+    }
+    
+    // Add backup event listener for the add product button
+    const addProductBtn = document.getElementById('addProductBtn');
+    if (addProductBtn) {
+        addProductBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add product button clicked (backup listener)');
+            openProductModal();
+        });
+        console.log('Backup event listener added to add product button');
     }
 
     const productForm = document.getElementById('productForm');
     if (productForm) {
-        // console.log('Setting up form submission handler'); // Optional: for debugging
+        console.log('Setting up form submission handler');
         productForm.addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -860,7 +931,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (result.success) {
                     showToast(result.message, 'success');
-                    closeModal('productModal');
+                    closeProductModal('productModal');
+                    
+                    // Verify modal still exists after operations
+                    setTimeout(() => {
+                        const modalCheck = document.getElementById('productModal');
+                        console.log('Modal exists after operations:', !!modalCheck);
+                        if (!modalCheck) {
+                            console.error('Modal was removed from DOM!');
+                        }
+                    }, 100);
 
                     // Update the table or reload
                     if (action === 'add_product' && result.product_id) {
@@ -899,4 +979,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial sort of the table on page load
     sortTableByProductCode();
 });
+
+// Force reset modal function (for debugging/backup)
+function forceResetModal() {
+    console.log('Force resetting modal...');
+    const modal = document.getElementById('productModal');
+    if (!modal) {
+        console.error('Modal element missing from DOM!');
+        return false;
+    }
+    
+    // Reset all modal styles
+    modal.style.display = 'none';
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
+    
+    // Reset form if exists
+    const form = document.getElementById('productForm');
+    if (form) {
+        form.reset();
+        console.log('Form reset in forceResetModal');
+    }
+    
+    console.log('Modal force reset completed');
+    return true;
+}
 </script>

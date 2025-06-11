@@ -1054,95 +1054,20 @@ document.addEventListener('keydown', function(e) {
                 if (!submitBtn.disabled) {
                     submitBtn.click();
                 }
-                break;
-            case 'r':
+                break;            case 'r':
                 e.preventDefault();
                 resetForm();
                 showToast('Đặt lại form (Ctrl+R)', 'info');
-                break;
-            case 's':
-                e.preventDefault();
-                saveDraft();
-                showToast('Đã lưu bản nháp (Ctrl+S)', 'success');
                 break;
             case 'n':
                 e.preventDefault();
                 addItemRow();
                 showToast('Thêm dòng sản phẩm (Ctrl+N)', 'info');
                 break;
-            case 'd':
-                e.preventDefault();
-                clearDraft();
-                showToast('Đã xóa bản nháp (Ctrl+D)', 'info');
-                break;
         }
     }
 });
 
-
-// Auto-save draft (localStorage)
-function saveDraft() {
-    const draftData = {
-        customer_name: document.getElementById('customer_name').value,
-        customer_phone: document.getElementById('customer_phone').value,
-        payment_method: document.getElementById('payment_method').value,
-        discount_percent: document.getElementById('discount_percent').value,
-        notes: document.getElementById('notes').value,
-        cartItems: cartItems,
-        timestamp: Date.now()
-    };
-    
-    localStorage.setItem('sales_draft', JSON.stringify(draftData));
-}
-
-// Load draft
-function loadDraft() {
-    const draft = localStorage.getItem('sales_draft');
-    if (draft) {
-        try {
-            const data = JSON.parse(draft);
-            // Only load if less than 1 hour old
-            if (Date.now() - data.timestamp < 3600000) {
-                if (confirm('Có bản nháp chưa hoàn thành. Bạn có muốn khôi phục?')) {
-                    document.getElementById('customer_name').value = data.customer_name || '';
-                    document.getElementById('customer_phone').value = data.customer_phone || '';
-                    document.getElementById('payment_method').value = data.payment_method || 'cash';
-                    document.getElementById('discount_percent').value = data.discount_percent || 0;
-                    document.getElementById('notes').value = data.notes || '';
-                    
-                    // Restore cart items
-                    if (data.cartItems && data.cartItems.length > 0) {
-                        data.cartItems.forEach(item => {
-                            addItemRow();
-                            const row = document.getElementById(`item_${itemCount}`);
-                            const select = row.querySelector('select');
-                            select.value = item.product_id;
-                            selectProduct(select, itemCount);
-                            row.querySelector('input[type="number"]').value = item.quantity;
-                            updateQuantity(row.querySelector('input[type="number"]'), itemCount);
-                        });
-                    }
-                    
-                    showToast('Đã khôi phục bản nháp', 'success');
-                }
-                localStorage.removeItem('sales_draft');
-            }
-        } catch (e) {
-            console.error('Error loading draft:', e);
-        }
-    }
-}
-
-// Clear draft on successful submission
-function clearDraft() {
-    localStorage.removeItem('sales_draft');
-}
-
-// Auto-save every 30 seconds
-setInterval(saveDraft, 30000);
-
-// Save draft when leaving page
-window.addEventListener('beforeunload', saveDraft);
 
 // Customer quick select by phone
 document.getElementById('customer_phone').addEventListener('input', function() {
@@ -1160,10 +1085,9 @@ document.getElementById('customer_phone').addEventListener('input', function() {
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     addItemRow();
-    loadDraft();
     
-    // Show keyboard shortcuts hint
-    showToast('💡 Phím tắt: F2 (Tìm SP), F3 (Thêm SP), Ctrl+Enter (Lưu), Ctrl+R (Reset)', 'info');
+    // Show keyboard shortcuts hint  
+    showToast('💡 Phím tắt: F2 (Tìm SP), F3 (Khách hàng), F4 (Thanh toán), Ctrl+R (Reset)', 'info');
 });
 
 // Format date helper

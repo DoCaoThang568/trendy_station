@@ -174,14 +174,13 @@ function showKeyboardShortcuts() {
                 <strong>Ctrl + S:</strong> Lưu (trang hiện tại)<br>
                 <strong>Ctrl + N:</strong> Thêm mới (trang hiện tại)<br>
             </div>
-            
-            <h4>🛒 Phím tắt Bán hàng</h4>
+              <h4>🛒 Phím tắt Bán hàng</h4>
             <div style="margin-bottom: 1rem;">
-                <strong>F2:</strong> Thêm sản phẩm<br>
-                <strong>F3:</strong> Thêm khách hàng<br>
+                <strong>F2:</strong> Tìm sản phẩm<br>
+                <strong>F3:</strong> Focus khách hàng<br>
                 <strong>F4:</strong> Thanh toán<br>
                 <strong>F5:</strong> In hóa đơn<br>
-                <strong>Ctrl + D:</strong> Xóa draft<br>
+                <strong>Ctrl + R:</strong> Reset form<br>
             </div>
             
             <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
