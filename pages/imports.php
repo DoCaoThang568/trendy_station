@@ -170,14 +170,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// Get recent imports
+// Get recent imports - increased limit
 $recentImports = fetchAll("
     SELECT i.*, s.name as supplier_name_db 
     FROM imports i 
     LEFT JOIN suppliers s ON i.supplier_id = s.id 
     ORDER BY i.import_date DESC 
-    LIMIT 10
+    LIMIT 20
 ");
+
+// Debug: Show count
+// echo "<!-- Debug: Found " . count($recentImports) . " imports -->";
 
 // Get products for selection
 $products_stmt = $pdo->query("
@@ -207,7 +210,7 @@ $newImportCode = generateCode('PN', 'imports', 'import_code');
 <div style="display: grid; grid-template-columns: 1fr 400px; gap: 2rem; align-items: start;">
     <!-- Form tạo phiếu nhập -->
     <div class="form-container">
-        <form method="POST" id="importForm">
+    <form method="POST" id="importForm">
             <input type="hidden" name="action" value="create_import">
             <input type="hidden" name="products" id="productsData">
             <input type="hidden" name="total_amount" id="totalAmountInput">
@@ -323,62 +326,64 @@ $newImportCode = generateCode('PN', 'imports', 'import_code');
                         </div>
                         <div style="font-size: 0.9rem; margin-bottom: 0.25rem;">
                             🏢 <?php echo htmlspecialchars($import['supplier_name'] ?: $import['supplier_name_db']); ?>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-weight: 600; color: var(--success-color);">
-                                <?php echo number_format($import['total_amount']); ?>₫
+                        </div>                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span style="font-weight: 600; color: var(--success-color);">
+                                    <?php echo number_format($import['total_amount']); ?>₫
+                                </span>
+                                <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); printImport(<?php echo $import['id']; ?>)" title="In phiếu nhập">
+                                    🖨️
+                                </button>
                             </span>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <span style="background: 
-                                    <?php 
-                                    // Use $import['status'] which exists
+                            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                <?php
+                                    // Status badge
+                                    $statusBgColor = 'var(--secondary-gradient)';
+                                    $statusDisplay = htmlspecialchars($import['status']);
                                     switch($import['status']) {
-                                        case 'Hoàn thành': echo 'var(--success-gradient)'; break;
-                                        case 'Đang xử lý': echo 'var(--warning-gradient)'; break;
-                                        case 'Đã hủy': echo 'var(--danger-gradient)'; break;
-                                        default: echo 'var(--secondary-gradient)'; // Fallback
+                                        case 'Hoàn thành': 
+                                            $statusDisplay = '✅ Hoàn thành';
+                                            $statusBgColor = 'var(--success-gradient)'; 
+                                            break;
+                                        case 'Đang xử lý': 
+                                            $statusDisplay = '⏳ Đang xử lý';
+                                            $statusBgColor = 'var(--warning-gradient)'; 
+                                            break;
+                                        case 'Đã hủy': 
+                                            $statusDisplay = '❌ Đã hủy';
+                                            $statusBgColor = 'var(--danger-gradient)'; 
+                                            break;
                                     }
-                                    ?>; color: white; padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem;">
-                                    <?php 
-                                    // Use $import['status'] for display text
-                                    switch($import['status']) {                                        case 'Hoàn thành': echo '✅ Hoàn thành'; break;
-                                        case 'Đang xử lý': echo '⏳ Đang xử lý'; break;
-                                        case 'Đã hủy': echo '❌ Đã hủy'; break;
-                                        default: echo htmlspecialchars($import['status']); // Fallback
-                                    }
-                                    ?>
-                                </span>
-                                <span style="background: 
-                                    <?php 
-                                    // Payment status colors
+                                    
+                                    // Payment status 
+                                    $paymentBgColor = 'var(--secondary-gradient)';
+                                    $paymentDisplay = '?';
+                                    $paymentTitle = 'Không rõ';
                                     switch($import['payment_status'] ?? 'pending') {
-                                        case 'paid': echo 'var(--success-gradient)'; break;
-                                        case 'partial': echo 'var(--warning-gradient)'; break;
-                                        case 'pending': echo 'var(--danger-gradient)'; break;
-                                        default: echo 'var(--secondary-gradient)';
+                                        case 'paid': 
+                                            $paymentDisplay = '💰';
+                                            $paymentBgColor = 'var(--success-color, #28a745)';
+                                            $paymentTitle = 'Đã thanh toán';
+                                            break;
+                                        case 'partial': 
+                                            $paymentDisplay = '💸';
+                                            $paymentBgColor = 'var(--warning-color, #ffc107)';
+                                            $paymentTitle = 'Thanh toán một phần';
+                                            break;
+                                        case 'pending': 
+                                            $paymentDisplay = '⏳';
+                                            $paymentBgColor = 'var(--danger-color, #dc3545)';
+                                            $paymentTitle = 'Chưa thanh toán';
+                                            break;
                                     }
-                                    ?>; color: white; padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem;">
-                                    <?php 
-                                    // Payment status display
-                                    switch($import['payment_status'] ?? 'pending') {
-                                        case 'paid': echo '💰 Đã TT'; break;
-                                        case 'partial': echo '💸 TT một phần'; break;
-                                        case 'pending': echo '⏳ Chưa TT'; break;
-                                        default: echo htmlspecialchars($import['payment_status'] ?? 'N/A');                                    }
-                                    ?>
+                                ?>
+                                <span style="background: <?php echo $statusBgColor; ?>; color: white; padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem; white-space: nowrap;">
+                                    <?php echo $statusDisplay; ?>
                                 </span>
-                                <div style="display: flex; gap: 0.3rem;">
-                                    <button class="btn btn-small btn-primary" onclick="event.stopPropagation(); viewImportDetail(<?php echo $import['id']; ?>)" title="Xem chi tiết (Enter)">
-                                        👁️
-                                    </button>
-                                    <button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); printImport(<?php echo $import['id']; ?>)" title="In phiếu nhập (Ctrl+P)">
-                                        🖨️
-                                    </button>
-                                    <button class="btn btn-small btn-danger" onclick="event.stopPropagation(); deleteImport(<?php echo $import['id']; ?>, '<?php echo $import['import_code']; ?>')" title="Xóa phiếu nhập">
-                                        🗑️
-                                    </button>
-                                </div>
-                            </div>
+                                <span style="background: <?php echo $paymentBgColor; ?>; color: white; padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem;" 
+                                      title="<?php echo $paymentTitle; ?>">
+                                    <?php echo $paymentDisplay; ?>
+                                </span>                            </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
