@@ -1256,23 +1256,22 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
         const membership = document.getElementById('membershipFilter').value;
         
         const params = new URLSearchParams(); // Start with a clean slate
+        params.set('page', 'customers'); // Direct to customers page via index.php
         params.set('search', search);
         params.set('status', status);
         params.set('membership', membership);
-        params.set('page', '1'); // Reset to page 1 when filters change
+        // params.set('page', '1'); // Page number for pagination, not the route page
         
-        // Construct the full URL to ensure it stays on customers.php
-        // const baseUrl = window.location.origin + window.location.pathname;
-        const baseUrl = window.location.origin + '/trendy_station/pages/customers.php';
-        window.location.href = baseUrl + '?' + params.toString();
+        const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1) + 'index.php';
+        window.location.href = baseUrl + '?' + params.toString() + '&page_num=1'; // Add page_num for pagination reset
     }
 
     function resetFilters() {
         const params = new URLSearchParams();
-        params.set('page', '1');
-        // const baseUrl = window.location.origin + window.location.pathname;
-        const baseUrl = window.location.origin + '/trendy_station/pages/customers.php';
-        window.location.href = baseUrl + '?' + params.toString();
+        params.set('page', 'customers'); // Direct to customers page via index.php
+        // params.set('page', '1'); // Page number for pagination, not the route page
+        const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1) + 'index.php';
+        window.location.href = baseUrl + '?' + params.toString() + '&page_num=1'; // Add page_num for pagination reset
     }
 
     // --- Modal Control Functions ---
