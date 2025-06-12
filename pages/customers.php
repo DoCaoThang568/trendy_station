@@ -1263,14 +1263,16 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
         params.set('page', '1'); // Reset to page 1 when filters change
         
         // Construct the full URL to ensure it stays on customers.php
-        const baseUrl = window.location.origin + window.location.pathname;
+        // const baseUrl = window.location.origin + window.location.pathname;
+        const baseUrl = window.location.origin + '/trendy_station/pages/customers.php';
         window.location.href = baseUrl + '?' + params.toString();
     }
 
     function resetFilters() {
         const params = new URLSearchParams();
         params.set('page', '1');
-        const baseUrl = window.location.origin + window.location.pathname;
+        // const baseUrl = window.location.origin + window.location.pathname;
+        const baseUrl = window.location.origin + '/trendy_station/pages/customers.php';
         window.location.href = baseUrl + '?' + params.toString();
     }
 
@@ -1318,10 +1320,8 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
             console.error('Error fetching customer for edit:', error);
             showToast('Lỗi khi tải dữ liệu để sửa.', 'danger');
         });
-    }
-
-    function deleteCustomer(id, name) {
-        if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng "${name}" (ID: ${id})?\\nHành động này không thể hoàn tác!`)) {
+    }    function deleteCustomer(id, name) {
+        if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng "${name}" (ID: ${id})?\nHành động này không thể hoàn tác!`)) {
             return;
         }
         fetch('', {
@@ -1374,10 +1374,9 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
         if (customer.sales_history && customer.sales_history.length > 0) {
             salesHistoryHtml = `
                 <ul class="list-group list-group-flush">
-                    ${customer.sales_history.map(sale => `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${customer.sales_history.map(sale => `                        <li class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <a href="sales.php?view_sale=${sale.id}" target="_blank">${sale.sale_code}</a> 
+                                <a href="all_sales.php?view_sale=${sale.id}" target="_blank">${sale.sale_code}</a> 
                                 <small class="text-muted">(${new Date(sale.sale_date).toLocaleDateString('vi-VN')})</small>
                             </div>
                             <div>
@@ -1393,8 +1392,7 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
         if (customer.return_history && customer.return_history.length > 0) {
             returnHistoryHtml = `
                 <ul class="list-group list-group-flush">
-                    ${customer.return_history.map(returnItem => `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${customer.return_history.map(returnItem => `                        <li class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
                                 <a href="returns.php?view_return=${returnItem.id}" target="_blank">${returnItem.return_code}</a> 
                                 <small class="text-muted">(${new Date(returnItem.return_date).toLocaleDateString('vi-VN')})</small>
@@ -1425,32 +1423,23 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
                         <h6 class="text-muted mb-2"><i class="fas fa-info-circle me-2"></i>Thông tin cá nhân</h6>
                         <p><i class="fas fa-phone fa-fw me-2 text-primary"></i>${customer.phone || 'N/A'}</p>
                         <p><i class="fas fa-envelope fa-fw me-2 text-success"></i>${customer.email || 'N/A'}</p>
-                        <p><i class="fas fa-birthday-cake fa-fw me-2 text-warning"></i>${customer.birth_date ? new Date(customer.birth_date).toLocaleDateString('vi-VN') : 'N/A'} (${customer.age !== null ? customer.age + ' tuổi' : 'N/A'})</p>
+                        <p><i class="fas fa-birthday-cake fa-fw me-2 text-warning"></i>${customer.formatted_birth_date || 'N/A'} ${customer.age !== null ? '(' + customer.age + ' tuổi)' : ''}</p>
                         <p><i class="fas fa-venus-mars fa-fw me-2 text-info"></i>${customer.gender || 'N/A'}</p>
                         <p><i class="fas fa-map-marker-alt fa-fw me-2 text-danger"></i>${customer.address || 'N/A'}</p>
-                        <p class="mt-2"><em><i class="fas fa-sticky-note fa-fw me-2 text-secondary"></i>${customer.notes || 'Không có ghi chú'}</em></p>
-                        <p class="small text-muted mt-3">Ngày tạo: ${customer.created_at ? new Date(customer.created_at).toLocaleString('vi-VN', {
-                            timeZone: 'Asia/Ho_Chi_Minh',
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false
-                        }) : 'N/A'}</p>
+                        <p class="mt-2"><em><i class="fas fa-sticky-note fa-fw me-2 text-secondary"></i>${customer.notes || 'Không có ghi chú'}</em></p>                        <p class="small text-muted mt-3">Ngày tạo: ${customer.formatted_created_at || 'N/A'}</p>
                     </div>
                     <div class="col-lg-8 ps-lg-4">
                         <h6 class="text-muted mb-3"><i class="fas fa-chart-line me-2"></i>Thống kê & Hoạt động</h6>
                         <div class="row mb-3 g-3">
                             <div class="col-md-4">
                                 <div class="p-3 bg-light rounded text-center">
-                                    <div class="fs-5 fw-bold">${Number(customer.calculated_total_spent || 0).toLocaleString('vi-VN')}đ</div>
+                                    <div class="fs-5 fw-bold">${Number(customer.total_spent || 0).toLocaleString('vi-VN')}đ</div>
                                     <small class="text-muted">Tổng chi tiêu</small>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="p-3 bg-light rounded text-center">
-                                    <div class="fs-5 fw-bold">${customer.calculated_total_orders || 0}</div>
+                                    <div class="fs-5 fw-bold">${customer.total_orders || 0}</div>
                                     <small class="text-muted">Tổng đơn hàng</small>
                                 </div>
                             </div>
@@ -1512,13 +1501,12 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
             return;
         }
 
-        const toastId = 'toast-' + Date.now();
-        const toastHTML = `
-            <div id="\${toastId}" class="toast align-items-center text-white bg-\${type === 'danger' ? 'danger' : (type === 'success' ? 'success' : 'primary')} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="\${duration}">
+        const toastId = 'toast-' + Date.now();        const toastHTML = `
+            <div id="${toastId}" class="toast align-items-center text-white bg-${type === 'danger' ? 'danger' : (type === 'success' ? 'success' : 'primary')} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="${duration}">
               <div class="d-flex">
                 <div class="toast-body">
-                  \${type === 'danger' ? '<i class="fas fa-exclamation-triangle me-2"></i>' : (type === 'success' ? '<i class="fas fa-check-circle me-2"></i>' : '<i class="fas fa-info-circle me-2"></i>')}
-                  \${message}
+                  ${type === 'danger' ? '<i class="fas fa-exclamation-triangle me-2"></i>' : (type === 'success' ? '<i class="fas fa-check-circle me-2"></i>' : '<i class="fas fa-info-circle me-2"></i>')}
+                  ${message}
                 </div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
               </div>
