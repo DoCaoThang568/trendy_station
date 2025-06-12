@@ -1182,24 +1182,23 @@ if ($stats['total_customers_stat'] > 0 && isset($stats['total_revenue_stat'])) {
                     customerForm.requestSubmit(); // Modern way to submit form
                 }
             }
-        });        // Filter form submission handling - Remove form submit listener since we're not using form anymore
-        // const filterForm = document.getElementById('filterForm');
-        // if(filterForm) {
-        //     filterForm.addEventListener('submit', function(e) {
-        //         e.preventDefault();
-        //         applyFilters();
-        //     });
-        // }
+        });
         
-        // Debounced search
-        let searchTimeout;
+        // Debounced search - REMOVED to prevent focus loss
+        // let searchTimeout;
         const searchInput = document.getElementById('searchInput');
         if(searchInput) {
-            searchInput.addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
+            // searchInput.addEventListener('input', function() { // REMOVED
+            //     clearTimeout(searchTimeout);
+            //     searchTimeout = setTimeout(() => {
+            //         applyFilters();
+            //     }, 500);
+            // });
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // Prevent default form submission if it were in a form
                     applyFilters();
-                }, 500);
+                }
             });
         }
         
